@@ -1,0 +1,87 @@
+.home-wrapper {
+  min-height: 100vh;
+  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 40px;
+}
+
+/* GRID LAYOUT */
+.home-grid {
+  width: 100%;
+  max-width: 1300px;
+  display: grid;
+  grid-template-columns: 2fr 1fr; 
+  gap: 80px;
+  align-items: center;
+  .home-grid {
+  min-height: calc(100vh - 120px);
+}
+
+}
+
+/* LEFT SIDE */
+.home-left {
+  max-width: 700px;
+}
+
+.home-title {
+  font-size: 56px;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #111827;
+  margin-bottom: 20px;
+}
+
+.home-title span {
+  color: #2563eb;
+}
+
+.home-subtitle {
+  font-size: 18px;
+  color: #6b7280;
+  max-width: 560px;
+  margin-bottom: 40px;
+  line-height: 1.6;
+}
+
+.home-image {
+  width: 100%;
+  max-width: 560px;
+  height: auto;
+}
+
+/* RIGHT SIDE */
+.home-right {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Ensures auth card NEVER shrinks */
+.home-right > * {
+  width: 420px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1024px) {
+  .home-grid {
+    grid-template-columns: 1fr;
+    gap: 60px;
+    text-align: center;
+  }
+
+  .home-left {
+    margin: 0 auto;
+  }
+
+  .home-image {
+    margin: 0 auto;
+  }
+
+  .home-right > * {
+    width: 100%;
+    max-width: 420px;
+  }
+}

@@ -1,0 +1,119 @@
+.job-page {
+  display: flex;
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+/* Sidebar */
+.filters {
+  width: 280px;
+  padding: 24px;
+  background: white;
+  border-right: 1px solid #e5e7eb;
+
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.filters-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.filters-subtitle {
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 10px;
+}
+
+/* Upload box */
+.upload-box {
+  border: 2px dashed #93c5fd;
+  padding: 20px;
+  border-radius: 14px;
+  text-align: center;
+}
+
+.browse-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.upload-box p {
+  font-size: 13px;
+  margin-top: 8px;
+  color: #6b7280;
+}
+
+.upload-box small {
+  font-size: 11px;
+  color: #ef4444;
+}
+
+/* Filters */
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.filter-group label {
+  font-size: 13px;
+}
+
+.filter-group select {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #d1d5db;
+}
+
+/* Buttons */
+.filter-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.apply-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.reset-btn {
+  background: #f3f4f6;
+  border: none;
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+/* Job list */
+.job-list {
+  flex: 1;
+  padding: 24px;
+}
+
+.subtitle {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 20px;
+}
+
+.empty-state {
+  padding: 40px;
+  text-align: center;
+  color: #6b7280;
+  background: white;
+  border-radius: 16px;
+}
