@@ -1,0 +1,170 @@
+
+
+.workspace-container {
+  padding: 40px;
+  background: #f4f6f9;
+  min-height: 100vh;
+  font-family: "Inter", sans-serif;
+}
+
+.workspace-title {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  color:#2563eb;
+}
+
+.workspace-subtitle {
+  color: #6b7280;
+  margin-bottom: 30px;
+  font-size: 14px;
+}
+
+
+.workspace-grid {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 30px;
+  align-items: start;
+}
+
+
+
+.post-job-card {
+  background: white;
+  padding: 25px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.post-job-card h2 {
+  font-size: 18px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.post-job-card label {
+  display: block;
+  font-size: 14px;
+  margin-bottom: 6px;
+  margin-top: 12px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.post-job-card input,
+.post-job-card textarea {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+  outline: none;
+  transition: 0.2s ease;
+}
+
+.post-job-card input:focus,
+.post-job-card textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+}
+
+.post-job-card textarea {
+  height: 100px;
+  resize: none;
+}
+
+/* INPUT ROWS */
+.row {
+  display: flex;
+  gap: 15px;
+}
+
+.row > div {
+  flex: 1;
+}
+
+
+.publish-btn {
+  margin-top: 20px;
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: #2563eb;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.publish-btn:hover {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+}
+
+
+.jobs-section {
+  display: flex;
+  flex-direction: column;
+}
+
+.jobs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.jobs-header h2 {
+  font-size: 18px;
+}
+
+.filter-btn {
+  background: white;
+  border: 1px solid #e5e7eb;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.filter-btn:hover {
+  background: #f3f4f6;
+}
+
+
+.load-more {
+  margin: 20px auto 0;
+  padding: 10px 20px;
+  border-radius: 20px;
+  border: 1px solid #d1d5db;
+  background: white;
+  cursor: pointer;
+  font-size: 13px;
+  transition: 0.2s ease;
+}
+
+.load-more:hover {
+  background: #f3f4f6;
+}
+
+
+
+@media (max-width: 1024px) {
+  .workspace-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .workspace-container {
+    padding: 20px;
+  }
+
+  .row {
+    flex-direction: column;
+  }
+}

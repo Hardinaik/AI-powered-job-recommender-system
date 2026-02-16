@@ -3,54 +3,100 @@ import JobCard from "../components/jobCard";
 import "./JobListPage.css";
 
 function JobListPage() {
+  // ------------------ Filter Options ------------------
+
+  const domains = [
+    "Technology / IT",
+    "Software Development",
+    "Artificial Intelligence & ML",
+    "Data Science & Analytics"
+  ];
+
+  const locations = [
+    "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
+    "Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand",
+    "Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur",
+    "Meghalaya","Mizoram","Nagaland","Odisha","Punjab",
+    "Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura",
+    "Uttar Pradesh","Uttarakhand","West Bengal",
+    "Andaman and Nicobar Islands","Chandigarh",
+    "Dadra and Nagar Haveli and Daman and Diu",
+    "Delhi","Jammu and Kashmir","Ladakh","Lakshadweep","Puducherry",
+    "Remote"
+  ];
+
+  const experienceOptions = [
+    ...Array.from({ length: 16 }, (_, i) => i),
+    "15+"
+  ];
+
+  // ------------------ Job Data ------------------
+
   const allJobs = [
     {
       id: 1,
-      title: "Senior Product Designer",
+      title: "Frontend Developer",
       company: "TechFlow Systems",
-      location: "San Francisco",
-      match: 98,
-      description: "Senior designer role...",
+      location: "Gujarat",
+      domain: "Technology / IT",
+      experience: 2,
+      salary: "₹6L - ₹10L",
       type: "Full-time",
-      salary: "$140k - $180k",
-      domain: "Design",
+      match: 82,
+      description:
+        "Looking for a React developer with experience in modern UI frameworks and REST API integration."
     },
     {
       id: 2,
-      title: "Lead UX Architect",
+      title: "Data Scientist",
       company: "Neon Health",
-      location: "Austin",
-      match: 92,
-      description: "UX architect role...",
-      type: "Remote",
-      salary: "$160k - $210k",
-      domain: "Technology",
-    },
+      location: "Karnataka",
+      domain: "Data Science & Analytics",
+      experience: 5,
+      salary: "₹12L - ₹18L",
+      type: "Full-time",
+      match: 91,
+      description:
+        "Seeking a Data Scientist skilled in Python, ML models, and data visualization tools."
+    }
   ];
 
+  // ------------------ States ------------------
+
   const [jobs, setJobs] = useState(allJobs);
-  const [location, setLocation] = useState("");
   const [domain, setDomain] = useState("");
-  const [hasFiltered, setHasFiltered] = useState(false);
+  const [location, setLocation] = useState("");
+  const [experience, setExperience] = useState("");
+
+  // ------------------ Filter Logic ------------------
 
   const applyFilters = () => {
-    const results = allJobs.filter((job) => {
-      return (
-        (location ? job.location.includes(location) : true) &&
-        (domain ? job.domain === domain : true)
-      );
+    const filtered = allJobs.filter((job) => {
+      const domainMatch = domain ? job.domain === domain : true;
+      const locationMatch = location ? job.location === location : true;
+
+      let experienceMatch = true;
+
+      if (experience === "15+") {
+        experienceMatch = job.experience >= 15;
+      } else if (experience !== "") {
+        experienceMatch = job.experience <= Number(experience);
+      }
+
+      return domainMatch && locationMatch && experienceMatch;
     });
 
-    setJobs(results);
-    setHasFiltered(true);
+    setJobs(filtered);
   };
 
   const resetFilters = () => {
-    setLocation("");
     setDomain("");
+    setLocation("");
+    setExperience("");
     setJobs(allJobs);
-    setHasFiltered(false);
   };
+
+  // ------------------ JSX ------------------
 
   return (
     <div className="job-page">
@@ -61,41 +107,59 @@ function JobListPage() {
           Refine jobs based on your preferences
         </p>
 
-        <div className="upload-box">
-          <button className="browse-btn">Browse</button>
-          <p>drop a file here</p>
-          <small>*PDF file supported</small>
-        </div>
-
-        <div className="filter-group">
-          <label>Location</label>
-          <select
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-          >
-            <option value="">Select</option>
-            <option value="San Francisco">San Francisco</option>
-            <option value="Austin">Austin</option>
-          </select>
-        </div>
-
+        {/* Industry Domain */}
         <div className="filter-group">
           <label>Industry Domain</label>
+          <select value={domain} onChange={(e) => setDomain(e.target.value)}>
+            <option value="">Select</option>
+            {domains.map((item, index) => (
+              <option key={index} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Location */}
+        <div className="filter-group">
+          <label>Location</label>
+          <select value={location} onChange={(e) => setLocation(e.target.value)}>
+            <option value="">Select</option>
+            {locations.map((item, index) => (
+              <option key={index} value={item}>
+                {item}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Experience */}
+        <div className="filter-group">
+          <label>Experience (Years)</label>
           <select
-            value={domain}
-            onChange={(e) => setDomain(e.target.value)}
+            value={experience}
+            onChange={(e) => setExperience(e.target.value)}
           >
             <option value="">Select</option>
-            <option value="Design">Design</option>
-            <option value="Technology">Technology</option>
+            {experienceOptions.map((exp, index) => (
+              <option key={index} value={exp}>
+                {exp === "15+" ? "15+ Years" : `${exp} Years`}
+              </option>
+            ))}
           </select>
+        </div>
+
+        {/* Resume Upload (UI only for now) */}
+        <div className="upload-box">
+          <button className="browse-btn">Browse</button>
+          <p>Drop a file here</p>
+          <small>*PDF file supported</small>
         </div>
 
         <div className="filter-actions">
           <button className="apply-btn" onClick={applyFilters}>
             Apply Filters
           </button>
-
           <button className="reset-btn" onClick={resetFilters}>
             Reset All Filters
           </button>

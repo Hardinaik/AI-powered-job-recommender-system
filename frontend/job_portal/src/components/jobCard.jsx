@@ -1,4 +1,5 @@
 import "./jobCard.css";
+import { FaBookmark } from "react-icons/fa";
 
 function JobCard({ job }) {
   return (
@@ -25,14 +26,13 @@ function JobCard({ job }) {
         <p>{job.description}</p>
       </div>
 
-      <div className="job-tags">
-        <span>{job.type}</span>
-        <span>{job.salary}</span>
-      </div>
-
+      {/* Footer */}
       <div className="job-card-footer">
         <button className="apply-btn">Apply Now</button>
-        <button className="save-btn"></button>
+
+        <button className="save-btn">
+          <FaBookmark />
+        </button>
       </div>
     </div>
   );

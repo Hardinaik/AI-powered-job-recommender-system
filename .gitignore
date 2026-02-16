@@ -3,3 +3,7 @@ __pycache__/
 venv/
 backend/.env
 frontend/node_modules/
+*.ipynb
+*.pdf
+*.csv
+databasescript.txt

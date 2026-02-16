@@ -6,6 +6,8 @@ uvicorn[standard]
 langchain
 langchain-community
 langchain-ollama
+langchain-google-genai
+pymupdf
 
 # Database (SQLAlchemy + Async support)
 sqlalchemy
@@ -23,3 +25,7 @@ pydantic-settings
 python-dotenv
 
 pydantic[email]
+
+sentence-transformers
+
+

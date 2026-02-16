@@ -14,6 +14,8 @@ function App() {
         <Route path="/recruiter-dashboard" element={<RecruiterDashboard />} />
       </Routes>
     </BrowserRouter>
+
+   
   );
 }
 

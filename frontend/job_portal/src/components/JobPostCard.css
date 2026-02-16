@@ -1,0 +1,99 @@
+.job-card {
+  background: white;
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 15px;
+  border: 1px solid #e5e7eb;
+  transition: 0.2s ease;
+}
+
+.job-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.job-card.active {
+  border: 2px solid #2563eb;
+}
+
+.job-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.job-top h3 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.job-meta {
+  font-size: 13px;
+  color: #6b7280;
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.job-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.details-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.details-btn:hover {
+  background: #1d4ed8;
+}
+
+.delete-icon {
+  color: #9ca3af;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.delete-icon:hover {
+  color: #ef4444;
+}
+
+.job-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.job-details h4 {
+  font-size: 14px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.job-details ul {
+  padding-left: 18px;
+  margin: 0;
+}
+
+.job-details li {
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: #374151;
+}
+
+.job-details p {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.6;
+}
