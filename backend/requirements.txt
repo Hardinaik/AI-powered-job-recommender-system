@@ -1,4 +1,4 @@
-# Web Server & Core
+
 fastapi
 uvicorn[standard]
 
@@ -27,5 +27,6 @@ python-dotenv
 pydantic[email]
 
 sentence-transformers
+pgvector
 
 
