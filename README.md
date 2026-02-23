@@ -6,6 +6,10 @@ This system uses resume parsing, skill extraction, and vector similarity search 
 
 ---
 
+## 🚧 Project Status
+
+This project is currently under active development.
+
 ## 🔥 Key Features
 
 ### 👨‍💼 Recruiter Dashboard
