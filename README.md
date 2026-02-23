@@ -155,6 +155,7 @@ DATABASE_URL=postgresql://username:password@localhost:5432/jobdb
 SECRET_KEY=your_secret_key
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
+GEMINI_API_KEY=your_api_key_here
 ```
 
 ### 5️⃣ Run Server
