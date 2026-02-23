@@ -1,54 +1,42 @@
-
 import { FaMapMarkerAlt, FaTrash } from "react-icons/fa";
 import "./JobPostCard.css";
 
-const JobPostCard = ({
-  job,
-  isExpanded,
-  onToggle,
-  onDelete
-}) => {
+const JobPostCard = ({ job, isExpanded, onToggle, onDelete }) => {
   return (
     <div className={`job-card ${isExpanded ? "active" : ""}`}>
-      <div className="job-top">
+      
+      {/* header*/}
+      <div className="job-header">
         <div>
-          <h3>{job.title}</h3>
-          <p className="job-meta">
-            <FaMapMarkerAlt /> {job.location} • {job.type}
+          <h3 className="job-title">{job.job_title}</h3>
+          <p className="job-location">
+            <FaMapMarkerAlt /> {job.location}
           </p>
         </div>
 
         <div className="job-actions">
           <button
             className="details-btn"
-            onClick={() => onToggle(job.id)}
+            onClick={() => onToggle(job.job_id)}
           >
             {isExpanded ? "Hide Details" : "View Details"}
           </button>
 
           <FaTrash
             className="delete-icon"
-            onClick={() => onDelete(job.id)}
+            onClick={() => onDelete(job.job_id)}
           />
         </div>
       </div>
 
-      {isExpanded && job.requirements && (
-        <div className="job-details">
-          <div>
-            <h4>Requirements</h4>
-            <ul>
-              {job.requirements.map((req, index) => (
-                <li key={index}>{req}</li>
-              ))}
-            </ul>
+      {/* description details */}
+      {isExpanded && (
+        <>
+          <hr className="divider" />
+          <div className="job-description">
+            {job.job_description}
           </div>
-
-          <div>
-            <h4>Summary</h4>
-            <p>{job.summary}</p>
-          </div>
-        </div>
+        </>
       )}
     </div>
   );

@@ -22,20 +22,20 @@ def create_job(
     current_recruiter: dict = Depends(get_current_recruiter)
 ):
 
-    # Validate Location
+    # validate location
     location = db.query(Location).filter(Location.id == job.location_id).first()
     if not location:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid location_id")
 
-    # Validate Industry Domain
+    # validate industry domain
     domain = db.query(IndustryDomain).filter(IndustryDomain.id == job.industry_domain_id).first()
     if not domain:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid industry_domain_id")
 
-    # Generate embeddings
+    # generate embedding
     embedding_skill, embedding_res = create_job_embedding(job.job_description)
 
-    # Create Job
+    # create job
     new_job = Job(
         job_title=job.job_title,
         company_name=job.company_name,
@@ -47,7 +47,7 @@ def create_job(
         recruiter_id=current_recruiter["user_id"],
         skill_embedding=embedding_skill,
         job_embedding=embedding_res,
-        posted_at=datetime.now(timezone.utc)  # timezone aware
+        posted_at=datetime.now(timezone.utc)  
     )
 
     db.add(new_job)
@@ -78,7 +78,7 @@ def get_posted_jobs(
         PostedJobResponse(
             job_id=job.job_id,
             job_title=job.job_title,
-            location=job.location.name,
+            location=job.location,
             job_description=job.job_description
         )
         for job in postedjobs
@@ -86,7 +86,7 @@ def get_posted_jobs(
 
 
 
-@router.delete("/jobs/{job_id}", response_model=DeleteJobResponse)
+@router.delete("/{job_id}", response_model=DeleteJobResponse)
 def delete_job(
     job_id: UUID,
     db: Session = Depends(get_db),
@@ -109,5 +109,15 @@ def delete_job(
     db.commit()
 
     return DeleteJobResponse(job_id=job_id)
+
+
+@router.get("/locations")
+def get_locations(db: Session = Depends(get_db)):
+    return db.query(Location).all()
+
+
+@router.get("/industry-domains")
+def get_industry_domains(db: Session = Depends(get_db)):
+    return db.query(IndustryDomain).all()
 
 

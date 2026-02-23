@@ -1,38 +1,27 @@
 .job-card {
-  background: white;
-  border-radius: 12px;
-  padding: 18px;
-  margin-bottom: 15px;
+  background: #fff;
+  border-radius: 10px;
+  padding: 22px;
+  margin-bottom: 20px;
   border: 1px solid #e5e7eb;
-  transition: 0.2s ease;
+  transition: all 0.3s ease;
 }
 
-.job-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-}
-
-.job-card.active {
-  border: 2px solid #2563eb;
-}
-
-.job-top {
+.job-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
 }
 
-.job-top h3 {
-  font-size: 16px;
+.job-title {
+  font-size: 18px;
   font-weight: 600;
+  margin-bottom: 6px;
 }
 
-.job-meta {
-  font-size: 13px;
+.job-location {
+  font-size: 14px;
   color: #6b7280;
-  margin-top: 5px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .job-actions {
@@ -42,58 +31,34 @@
 }
 
 .details-btn {
-  background: #2563eb;
+  background-color: #2f5bea;
   color: white;
-  border: none;
   padding: 8px 14px;
   border-radius: 6px;
-  font-size: 13px;
+  border: none;
   cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.details-btn:hover {
-  background: #1d4ed8;
+  font-size: 13px;
 }
 
 .delete-icon {
-  color: #9ca3af;
   cursor: pointer;
-  transition: 0.2s ease;
+  color: #9ca3af;
+  font-size: 16px;
 }
 
 .delete-icon:hover {
   color: #ef4444;
 }
 
-.job-details {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 30px;
-  margin-top: 20px;
-  padding-top: 15px;
+.divider {
+  margin: 18px 0;
+  border: none;
   border-top: 1px solid #e5e7eb;
 }
 
-.job-details h4 {
-  font-size: 14px;
-  margin-bottom: 8px;
-  font-weight: 600;
-}
-
-.job-details ul {
-  padding-left: 18px;
-  margin: 0;
-}
-
-.job-details li {
-  font-size: 13px;
-  margin-bottom: 6px;
+.job-description {
+  line-height: 1.7;
+  font-size: 14.5px;
   color: #374151;
-}
-
-.job-details p {
-  font-size: 13px;
-  color: #374151;
-  line-height: 1.6;
+  white-space: pre-line; 
 }

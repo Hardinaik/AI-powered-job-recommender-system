@@ -60,7 +60,7 @@ def create_llm_model():
     return llm
 
 def extract_json(jd):
-    create_llm_model()
+    llm = create_llm_model() 
     prompt = PromptTemplate.from_template(template)
     chain=prompt | llm | JsonOutputParser()
     extracted_jd = chain.invoke({"jd": jd})
