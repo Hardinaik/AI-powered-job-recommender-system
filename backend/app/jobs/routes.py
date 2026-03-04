@@ -1,6 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException,status
-from sqlalchemy.orm import Session
-from uuid import uuid4
+from sqlalchemy.orm import Session,joinedload
 from datetime import datetime, timezone
 
 from app.schemas import JobPostRequest, JobPostResponse,PostedJobResponse,DeleteJobResponse
@@ -14,7 +13,6 @@ from uuid import UUID
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
-
 @router.post("/post", response_model=JobPostResponse)
 def create_job(
     job: JobPostRequest,
@@ -22,33 +20,45 @@ def create_job(
     current_recruiter: dict = Depends(get_current_recruiter)
 ):
 
-    # validate location
-    location = db.query(Location).filter(Location.id == job.location_id).first()
-    if not location:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid location_id")
+    # Validate industry domain
+    domain = db.query(IndustryDomain).filter(
+        IndustryDomain.id == job.industry_domain_id
+    ).first()
 
-    # validate industry domain
-    domain = db.query(IndustryDomain).filter(IndustryDomain.id == job.industry_domain_id).first()
     if not domain:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid industry_domain_id")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid industry_domain_id"
+        )
 
-    # generate embedding
+    # Validate locations
+    locations = db.query(Location).filter(
+        Location.id.in_(job.location_ids)
+    ).all()
+
+    if len(locations) != len(job.location_ids):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="One or more location_ids are invalid"
+        )
+
+    # Generate embeddings
     embedding_skill, embedding_res = create_job_embedding(job.job_description)
 
-    # create job
     new_job = Job(
         job_title=job.job_title,
         company_name=job.company_name,
         industry_domain_id=job.industry_domain_id,
-        location_id=job.location_id,
         min_experience=job.min_experience,
-        max_experience=job.max_experience,
         job_description=job.job_description,
         recruiter_id=current_recruiter["user_id"],
         skill_embedding=embedding_skill,
         job_embedding=embedding_res,
-        posted_at=datetime.now(timezone.utc)  
+        posted_at=datetime.now(timezone.utc)
     )
+
+    # Attach many-to-many locations
+    new_job.locations = locations
 
     db.add(new_job)
     db.commit()
@@ -57,19 +67,15 @@ def create_job(
     return new_job
 
 
-@router.get("/postedjobs",response_model=List[PostedJobResponse])
+@router.get("/postedjobs", response_model=List[PostedJobResponse])
 def get_posted_jobs(
     db: Session = Depends(get_db),
     current_recruiter: dict = Depends(get_current_recruiter)
 ):
-    postedjobs = (
-        db.query(
-            Job.job_id,
-            Job.job_title,
-            Location.name.label("location"),
-            Job.job_description
-        )
-        .join(Location, Job.location_id == Location.id)
+
+    jobs = (
+        db.query(Job)
+        .options(joinedload(Job.locations))
         .filter(Job.recruiter_id == current_recruiter["user_id"])
         .all()
     )
@@ -78,13 +84,11 @@ def get_posted_jobs(
         PostedJobResponse(
             job_id=job.job_id,
             job_title=job.job_title,
-            location=job.location,
+            locations=[loc.name for loc in job.locations],
             job_description=job.job_description
         )
-        for job in postedjobs
+        for job in jobs
     ]
-
-
 
 @router.delete("/{job_id}", response_model=DeleteJobResponse)
 def delete_job(
@@ -103,7 +107,10 @@ def delete_job(
     )
 
     if not job:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
 
     db.delete(job)
     db.commit()
@@ -119,5 +126,4 @@ def get_locations(db: Session = Depends(get_db)):
 @router.get("/industry-domains")
 def get_industry_domains(db: Session = Depends(get_db)):
     return db.query(IndustryDomain).all()
-
 

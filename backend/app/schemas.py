@@ -1,7 +1,8 @@
 from pydantic import BaseModel, EmailStr
-from typing import Literal
+from typing import Literal,List
 from uuid import UUID
 from datetime import datetime
+
 
 class SignupRequest(BaseModel):
     fullname: str
@@ -19,43 +20,43 @@ class LoginResponse(BaseModel):
     token_type: str
     role: str
 
+
 class JobPostRequest(BaseModel):
     job_title: str
     company_name: str
     industry_domain_id: int
-    location_id: int
+    location_ids: List[int]
     min_experience: int
-    max_experience: int
     job_description: str
-
 
 
 class JobPostResponse(BaseModel):
     job_id: UUID
     job_title: str
     company_name: str
-    industry_domain_id: int
-    location_id: int
     min_experience: int
-    max_experience: int
-    job_description: str
-    posted_at: datetime
 
     class Config:
         from_attributes = True
-
 
 class PostedJobResponse(BaseModel):
     job_id: UUID
     job_title: str
-    location: str
+    locations: List[str]
     job_description: str
 
+    
     class Config:
         from_attributes = True
+
+
 
 
 class DeleteJobResponse(BaseModel):
     job_id:UUID
 
-   
+class SaveJobResponse(BaseModel):
+    job_id:UUID
+    message: str
+
+

@@ -5,7 +5,6 @@ uvicorn[standard]
 # AI & LLM
 langchain
 langchain-community
-langchain-ollama
 langchain-google-genai
 pymupdf
 

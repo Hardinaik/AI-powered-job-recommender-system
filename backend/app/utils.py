@@ -69,3 +69,12 @@ def get_current_recruiter(current_user: dict = Depends(get_current_user)):
             detail="Not a recruiter"
         )
     return current_user
+
+#Ensure jobseeker role
+def get_current_jobseeker(current_user: dict = Depends(get_current_user)):
+    if current_user["role"] != "jobseeker":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not a jobseeker"
+        )
+    return current_user

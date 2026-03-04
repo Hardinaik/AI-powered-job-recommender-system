@@ -3,7 +3,7 @@ import JobCard from "../components/jobCard";
 import "./JobListPage.css";
 
 function JobListPage() {
-  // ------------------ Filter Options ------------------
+  // Filter Options 
 
   const domains = [
     "Technology / IT",
@@ -61,14 +61,14 @@ function JobListPage() {
     }
   ];
 
-  // ------------------ States ------------------
+  // States 
 
   const [jobs, setJobs] = useState(allJobs);
   const [domain, setDomain] = useState("");
   const [location, setLocation] = useState("");
   const [experience, setExperience] = useState("");
 
-  // ------------------ Filter Logic ------------------
+  // Filter Logic 
 
   const applyFilters = () => {
     const filtered = allJobs.filter((job) => {
@@ -76,13 +76,6 @@ function JobListPage() {
       const locationMatch = location ? job.location === location : true;
 
       let experienceMatch = true;
-
-      if (experience === "15+") {
-        experienceMatch = job.experience >= 15;
-      } else if (experience !== "") {
-        experienceMatch = job.experience <= Number(experience);
-      }
-
       return domainMatch && locationMatch && experienceMatch;
     });
 

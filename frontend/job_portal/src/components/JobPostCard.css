@@ -1,10 +1,15 @@
 .job-card {
-  background: #fff;
-  border-radius: 10px;
-  padding: 22px;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
   margin-bottom: 20px;
   border: 1px solid #e5e7eb;
-  transition: all 0.3s ease;
+  transition: all 0.25s ease;
+}
+
+.job-card:hover {
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
 }
 
 .job-header {
@@ -14,20 +19,46 @@
 }
 
 .job-title {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 600;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
+  color: #111827;
 }
 
 .job-location {
   font-size: 14px;
   color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.location-icon {
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+/* Location badges */
+.location-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.location-badge {
+  background: #eef2ff;
+  color: #2f5bea;
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 20px;
+  font-weight: 500;
 }
 
 .job-actions {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 14px;
 }
 
 .details-btn {
@@ -38,12 +69,18 @@
   border: none;
   cursor: pointer;
   font-size: 13px;
+  transition: background 0.2s ease;
+}
+
+.details-btn:hover {
+  background-color: #2448c7;
 }
 
 .delete-icon {
   cursor: pointer;
   color: #9ca3af;
   font-size: 16px;
+  transition: color 0.2s ease;
 }
 
 .delete-icon:hover {
@@ -60,5 +97,5 @@
   line-height: 1.7;
   font-size: 14.5px;
   color: #374151;
-  white-space: pre-line; 
+  white-space: pre-line;
 }

@@ -5,12 +5,16 @@ const JobPostCard = ({ job, isExpanded, onToggle, onDelete }) => {
   return (
     <div className={`job-card ${isExpanded ? "active" : ""}`}>
       
-      {/* header*/}
+      {/* Header */}
       <div className="job-header">
         <div>
           <h3 className="job-title">{job.job_title}</h3>
+
           <p className="job-location">
-            <FaMapMarkerAlt /> {job.location}
+            <FaMapMarkerAlt />{" "}
+            {job.locations && job.locations.length > 0
+              ? job.locations.join(", ")
+              : "No location specified"}
           </p>
         </div>
 
@@ -29,7 +33,6 @@ const JobPostCard = ({ job, isExpanded, onToggle, onDelete }) => {
         </div>
       </div>
 
-      {/* description details */}
       {isExpanded && (
         <>
           <hr className="divider" />

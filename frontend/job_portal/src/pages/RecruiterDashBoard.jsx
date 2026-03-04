@@ -3,6 +3,7 @@ import "./RecruiterDashBoard.css";
 import JobPostCard from "../components/JobPostCard";
 import { FaPlus } from "react-icons/fa";
 import axios from "axios";
+import Select from "react-select";
 
 const API_BASE = "http://127.0.0.1:8000";
 
@@ -17,45 +18,13 @@ const RecruiterDashBoard = () => {
   const [formData, setFormData] = useState({
     company_name: "",
     job_title: "",
-    location_id: "",
+    location_ids: [],
     industry_domain_id: "",
-    min_experience: "",
-    max_experience: "",
+    min_experience: "", 
     job_description: "",
   });
 
   const token = localStorage.getItem("token");
-
-  //Fetch Locations
-  const fetchLocations = async () => {
-    const res = await axios.get(`${API_BASE}/jobs/locations`);
-    setLocations(res.data);
-  };
-
-  //Fetch Industry Domains
-  const fetchDomains = async () => {
-    const res = await axios.get(`${API_BASE}/jobs/industry-domains`);
-    setDomains(res.data);
-  };
-
-  //Fetch Posted Jobs
-  const fetchJobs = async () => {
-    try {
-      setLoadingJobs(true);
-
-      const res = await axios.get(`${API_BASE}/jobs/postedjobs`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      setJobs(res.data);
-    } catch (error) {
-      console.error("Error fetching jobs", error);
-    } finally {
-      setLoadingJobs(false);
-    }
-  };
 
   useEffect(() => {
     fetchLocations();
@@ -63,86 +32,112 @@ const RecruiterDashBoard = () => {
     fetchJobs();
   }, []);
 
-  //Handle Form Change
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const fetchLocations = async () => {
+    const res = await axios.get(`${API_BASE}/jobs/locations`);
+    setLocations(res.data);
   };
 
-  //Submit Job
+  const fetchDomains = async () => {
+    const res = await axios.get(`${API_BASE}/jobs/industry-domains`);
+    setDomains(res.data);
+  };
+
+  const fetchJobs = async () => {
+    try {
+      setLoadingJobs(true);
+      const res = await axios.get(`${API_BASE}/jobs/postedjobs`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setJobs(res.data);
+    } finally {
+      setLoadingJobs(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const handleLocationChange = (selectedOptions) => {
+    const ids = selectedOptions
+      ? selectedOptions.map((option) => option.value)
+      : [];
+
+    setFormData({ ...formData, location_ids: ids });
+  };
+
   const handleSubmit = async () => {
+    if (formData.location_ids.length === 0) {
+      alert("Please select at least one location.");
+      return;
+    }
+
+    if (formData.min_experience === "") {
+      alert("Please select minimum experience.");
+      return;
+    }
+
+    if (formData.industry_domain_id === "") {
+      alert("Please select industry domain.");
+      return;
+    }
+
     try {
       setLoadingPost(true);
 
-      const payload = {
-        ...formData,
-        location_id: Number(formData.location_id),
-        industry_domain_id: Number(formData.industry_domain_id),
-        min_experience: Number(formData.min_experience),
-        max_experience: Number(formData.max_experience),
-      };
-
-      await axios.post(`${API_BASE}/jobs/post`, payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
+      await axios.post(
+        `${API_BASE}/jobs/post`,
+        {
+          ...formData,
+          industry_domain_id: Number(formData.industry_domain_id),
+          min_experience: Number(formData.min_experience),
         },
-      });
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       // Reset form
       setFormData({
         company_name: "",
         job_title: "",
-        location_id: "",
+        location_ids: [],
         industry_domain_id: "",
         min_experience: "",
-        max_experience: "",
         job_description: "",
       });
 
-      await fetchJobs();
-
+      fetchJobs();
       alert("Job successfully posted!");
-
-    } catch (error) {
-      console.error("Error posting job", error);
+    } catch (err) {
       alert("Failed to post job");
     } finally {
       setLoadingPost(false);
     }
   };
 
-  // Toggle Details
   const toggleDetails = (job_id) => {
     setExpandedJobId(expandedJobId === job_id ? null : job_id);
   };
 
-  //Delete Job
   const deleteJob = async (job_id) => {
-    try {
-      await axios.delete(`${API_BASE}/jobs/${job_id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+    await axios.delete(`${API_BASE}/jobs/${job_id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-      setJobs((prevJobs) =>
-        prevJobs.filter((job) => job.job_id !== job_id)
-      );
-
-    } catch (error) {
-      console.error("Error deleting job", error);
-      alert("Error deleting job");
-    }
+    setJobs((prev) => prev.filter((job) => job.job_id !== job_id));
   };
+
+  const locationOptions = locations.map((loc) => ({
+    value: loc.id,
+    label: loc.name,
+  }));
 
   return (
     <div className="workspace-container">
       <h1 className="workspace-title">Recruiter Workspace</h1>
 
       <div className="workspace-grid">
-        {/* post job from*/}
         <div className="post-job-card">
           <h2>
             <FaPlus className="icon-blue" /> Post a New Job
@@ -164,19 +159,16 @@ const RecruiterDashBoard = () => {
             onChange={handleChange}
           />
 
-          <label>Location</label>
-          <select
-            name="location_id"
-            value={formData.location_id}
-            onChange={handleChange}
-          >
-            <option value="">Select Location</option>
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>
-                {loc.name}
-              </option>
-            ))}
-          </select>
+          <label>Locations</label>
+          <Select
+            options={locationOptions}
+            isMulti
+            placeholder="Search & select locations..."
+            value={locationOptions.filter((option) =>
+              formData.location_ids.includes(option.value)
+            )}
+            onChange={handleLocationChange}
+          />
 
           <label>Industry Domain</label>
           <select
@@ -184,7 +176,9 @@ const RecruiterDashBoard = () => {
             value={formData.industry_domain_id}
             onChange={handleChange}
           >
-            <option value="">Select Domain</option>
+            <option value="" disabled>
+              Select Domain
+            </option>
             {domains.map((domain) => (
               <option key={domain.id} value={domain.id}>
                 {domain.name}
@@ -192,23 +186,21 @@ const RecruiterDashBoard = () => {
             ))}
           </select>
 
-          <label>Experience Range</label>
-          <div className="row">
-            <input
-              type="number"
-              name="min_experience"
-              value={formData.min_experience}
-              onChange={handleChange}
-              placeholder="Min"
-            />
-            <input
-              type="number"
-              name="max_experience"
-              value={formData.max_experience}
-              onChange={handleChange}
-              placeholder="Max"
-            />
-          </div>
+          <label>Minimum Required Experience (Years)</label>
+          <select
+            name="min_experience"
+            value={formData.min_experience}
+            onChange={handleChange}
+          >
+            <option value="" disabled>
+              Select Experience
+            </option>
+            {[...Array(31).keys()].map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
 
           <label>Job Description</label>
           <textarea
@@ -222,22 +214,17 @@ const RecruiterDashBoard = () => {
             onClick={handleSubmit}
             disabled={loadingPost}
           >
-            {loadingPost ? "Posting Job..." : "Publish Job Posting"}
+            {loadingPost ? "Posting..." : "Publish Job Posting"}
           </button>
         </div>
 
-        {/* posted job list*/}
         <div className="jobs-section">
           <h2>Your Posted Jobs</h2>
 
           {loadingJobs ? (
             <p className="info-text">Loading your jobs...</p>
           ) : jobs.length === 0 ? (
-            <p className="info-text">
-              You haven’t posted any jobs yet.
-              <br />
-              Start by creating your first job posting!
-            </p>
+            <p className="info-text">No jobs posted yet.</p>
           ) : (
             jobs.map((job) => (
               <JobPostCard

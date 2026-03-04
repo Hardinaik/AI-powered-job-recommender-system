@@ -15,16 +15,17 @@ from pgvector.sqlalchemy import Vector
 from app.database import Base
 
 
-
-# USERS TABLE
+# =========================
+# USERS
+# =========================
 class User(Base):
     __tablename__ = "users"
+
     __table_args__ = (
         CheckConstraint(
             "user_role IN ('jobseeker', 'recruiter')",
-            name="user_role_check"
+            name="users_user_role_check"
         ),
-        {"schema": "public"}
     )
 
     user_id = Column(
@@ -44,20 +45,21 @@ class User(Base):
     )
 
     # Relationships
-    jobs = relationship("Job", back_populates="recruiter", cascade="all, delete")
     resume = relationship("Resume", back_populates="user", uselist=False, cascade="all, delete")
+    jobs = relationship("Job", back_populates="recruiter", cascade="all, delete")
     applications = relationship("Application", back_populates="job_seeker", cascade="all, delete")
+    savedjobs = relationship("SavedJob", back_populates="job_seeker", cascade="all, delete")
 
 
-
-# RESUME TABLE
+# =========================
+# RESUME
+# =========================
 class Resume(Base):
     __tablename__ = "resume"
-    __table_args__ = {"schema": "public"}
 
     user_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("public.users.user_id", ondelete="CASCADE"),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
         primary_key=True
     )
 
@@ -70,15 +72,14 @@ class Resume(Base):
         server_default=func.now()
     )
 
-    # Relationship
     user = relationship("User", back_populates="resume")
 
 
-
-# INDUSTRY DOMAINS TABLE
+# =========================
+# INDUSTRY DOMAINS
+# =========================
 class IndustryDomain(Base):
     __tablename__ = "industrydomains"
-    __table_args__ = {"schema": "public"}
 
     id = Column(Integer, primary_key=True)
     name = Column(String(100), unique=True, nullable=False)
@@ -86,22 +87,27 @@ class IndustryDomain(Base):
     jobs = relationship("Job", back_populates="industry")
 
 
-
-# LOCATIONS TABLE
+# =========================
+# LOCATIONS
+# =========================
 class Location(Base):
     __tablename__ = "locations"
-    __table_args__ = {"schema": "public"}
 
     id = Column(Integer, primary_key=True)
     name = Column(String(100), unique=True, nullable=False)
 
-    jobs = relationship("Job", back_populates="location")
+    jobs = relationship(
+        "Job",
+        secondary="job_locations",
+        back_populates="locations"
+    )
 
 
-# JOB TABLE
+# =========================
+# JOB
+# =========================
 class Job(Base):
     __tablename__ = "job"
-    __table_args__ = {"schema": "public"}
 
     job_id = Column(
         UUID(as_uuid=True),
@@ -114,22 +120,15 @@ class Job(Base):
 
     industry_domain_id = Column(
         Integer,
-        ForeignKey("public.industrydomains.id")
-    )
-
-    location_id = Column(
-        Integer,
-        ForeignKey("public.locations.id")
+        ForeignKey("industrydomains.id")
     )
 
     job_description = Column(Text, nullable=False)
-
     min_experience = Column(Integer, default=0)
-    max_experience = Column(Integer, default=0)
 
     recruiter_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("public.users.user_id", ondelete="CASCADE")
+        ForeignKey("users.user_id", ondelete="CASCADE")
     )
 
     job_embedding = Column(Vector(384), nullable=False)
@@ -143,25 +142,31 @@ class Job(Base):
     # Relationships
     recruiter = relationship("User", back_populates="jobs")
     industry = relationship("IndustryDomain", back_populates="jobs")
-    location = relationship("Location", back_populates="jobs")
     applications = relationship("Application", back_populates="job", cascade="all, delete")
+    savedjobs = relationship("SavedJob", back_populates="job", cascade="all, delete")
+
+    locations = relationship(
+        "Location",
+        secondary="job_locations",
+        back_populates="jobs"
+    )
 
 
-
-# APPLICATIONS TABLE
+# =========================
+# APPLICATIONS
+# =========================
 class Application(Base):
     __tablename__ = "applications"
-    __table_args__ = {"schema": "public"}
 
     job_seeker_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("public.users.user_id", ondelete="CASCADE"),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
         primary_key=True
     )
 
     job_id = Column(
         UUID(as_uuid=True),
-        ForeignKey("public.job.job_id", ondelete="CASCADE"),
+        ForeignKey("job.job_id", ondelete="CASCADE"),
         primary_key=True
     )
 
@@ -170,6 +175,51 @@ class Application(Base):
         server_default=func.now()
     )
 
-    # Relationships
     job_seeker = relationship("User", back_populates="applications")
     job = relationship("Job", back_populates="applications")
+
+
+# =========================
+# SAVED JOBS
+# =========================
+class SavedJob(Base):
+    __tablename__ = "savedjobs"
+
+    job_seeker_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="CASCADE"),
+        primary_key=True
+    )
+
+    job_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("job.job_id", ondelete="CASCADE"),
+        primary_key=True
+    )
+
+    saved_at = Column(
+        TIMESTAMP(timezone=True),
+        server_default=func.now()
+    )
+
+    job_seeker = relationship("User", back_populates="savedjobs")
+    job = relationship("Job", back_populates="savedjobs")
+
+
+# =========================
+# JOB LOCATIONS (M2M)
+# =========================
+class JobLocation(Base):
+    __tablename__ = "job_locations"
+
+    job_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("job.job_id", ondelete="CASCADE"),
+        primary_key=True
+    )
+
+    location_id = Column(
+        Integer,
+        ForeignKey("locations.id", ondelete="CASCADE"),
+        primary_key=True
+    )
