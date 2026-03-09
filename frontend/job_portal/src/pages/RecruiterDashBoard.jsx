@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./RecruiterDashBoard.css";
 import JobPostCard from "../components/JobPostCard";
+import Logout from "../components/auth/Logout"
 import { FaPlus } from "react-icons/fa";
 import axios from "axios";
 import Select from "react-select";
@@ -134,108 +135,113 @@ const RecruiterDashBoard = () => {
   }));
 
   return (
-    <div className="workspace-container">
-      <h1 className="workspace-title">Recruiter Workspace</h1>
+    <div className="page-container">
+      <div className="top-bar">
+        <Logout/>
+      </div>
+      <div className="workspace-container">
+        <h1 className="workspace-title">Recruiter Workspace</h1>
 
-      <div className="workspace-grid">
-        <div className="post-job-card">
-          <h2>
-            <FaPlus className="icon-blue" /> Post a New Job
-          </h2>
+        <div className="workspace-grid">
+          <div className="post-job-card">
+            <h2>
+              <FaPlus className="icon-blue" /> Post a New Job
+            </h2>
 
-          <label>Company Name</label>
-          <input
-            type="text"
-            name="company_name"
-            value={formData.company_name}
-            onChange={handleChange}
-          />
+            <label>Company Name</label>
+            <input
+              type="text"
+              name="company_name"
+              value={formData.company_name}
+              onChange={handleChange}
+            />
 
-          <label>Job Title</label>
-          <input
-            type="text"
-            name="job_title"
-            value={formData.job_title}
-            onChange={handleChange}
-          />
+            <label>Job Title</label>
+            <input
+              type="text"
+              name="job_title"
+              value={formData.job_title}
+              onChange={handleChange}
+            />
 
-          <label>Locations</label>
-          <Select
-            options={locationOptions}
-            isMulti
-            placeholder="Search & select locations..."
-            value={locationOptions.filter((option) =>
-              formData.location_ids.includes(option.value)
+            <label>Locations</label>
+            <Select
+              options={locationOptions}
+              isMulti
+              placeholder="Search & select locations..."
+              value={locationOptions.filter((option) =>
+                formData.location_ids.includes(option.value)
+              )}
+              onChange={handleLocationChange}
+            />
+
+            <label>Industry Domain</label>
+            <select
+              name="industry_domain_id"
+              value={formData.industry_domain_id}
+              onChange={handleChange}
+            >
+              <option value="" disabled>
+                Select Domain
+              </option>
+              {domains.map((domain) => (
+                <option key={domain.id} value={domain.id}>
+                  {domain.name}
+                </option>
+              ))}
+            </select>
+
+            <label>Minimum Required Experience (Years)</label>
+            <select
+              name="min_experience"
+              value={formData.min_experience}
+              onChange={handleChange}
+            >
+              <option value="" disabled>
+                Select Experience
+              </option>
+              {[...Array(31).keys()].map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+
+            <label>Job Description</label>
+            <textarea
+              name="job_description"
+              value={formData.job_description}
+              onChange={handleChange}
+            />
+
+            <button
+              className="publish-btn"
+              onClick={handleSubmit}
+              disabled={loadingPost}
+            >
+              {loadingPost ? "Posting..." : "Publish Job Posting"}
+            </button>
+          </div>
+
+          <div className="jobs-section">
+            <h2>Your Posted Jobs</h2>
+
+            {loadingJobs ? (
+              <p className="info-text">Loading your jobs...</p>
+            ) : jobs.length === 0 ? (
+              <p className="info-text">No jobs posted yet.</p>
+            ) : (
+              jobs.map((job) => (
+                <JobPostCard
+                  key={job.job_id}
+                  job={job}
+                  isExpanded={expandedJobId === job.job_id}
+                  onToggle={toggleDetails}
+                  onDelete={deleteJob}
+                />
+              ))
             )}
-            onChange={handleLocationChange}
-          />
-
-          <label>Industry Domain</label>
-          <select
-            name="industry_domain_id"
-            value={formData.industry_domain_id}
-            onChange={handleChange}
-          >
-            <option value="" disabled>
-              Select Domain
-            </option>
-            {domains.map((domain) => (
-              <option key={domain.id} value={domain.id}>
-                {domain.name}
-              </option>
-            ))}
-          </select>
-
-          <label>Minimum Required Experience (Years)</label>
-          <select
-            name="min_experience"
-            value={formData.min_experience}
-            onChange={handleChange}
-          >
-            <option value="" disabled>
-              Select Experience
-            </option>
-            {[...Array(31).keys()].map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-
-          <label>Job Description</label>
-          <textarea
-            name="job_description"
-            value={formData.job_description}
-            onChange={handleChange}
-          />
-
-          <button
-            className="publish-btn"
-            onClick={handleSubmit}
-            disabled={loadingPost}
-          >
-            {loadingPost ? "Posting..." : "Publish Job Posting"}
-          </button>
-        </div>
-
-        <div className="jobs-section">
-          <h2>Your Posted Jobs</h2>
-
-          {loadingJobs ? (
-            <p className="info-text">Loading your jobs...</p>
-          ) : jobs.length === 0 ? (
-            <p className="info-text">No jobs posted yet.</p>
-          ) : (
-            jobs.map((job) => (
-              <JobPostCard
-                key={job.job_id}
-                job={job}
-                isExpanded={expandedJobId === job.job_id}
-                onToggle={toggleDetails}
-                onDelete={deleteJob}
-              />
-            ))
-          )}
+          </div>
         </div>
       </div>
     </div>

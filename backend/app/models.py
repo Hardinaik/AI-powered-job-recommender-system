@@ -14,10 +14,7 @@ from pgvector.sqlalchemy import Vector
 
 from app.database import Base
 
-
-# =========================
 # USERS
-# =========================
 class User(Base):
     __tablename__ = "users"
 
@@ -51,9 +48,7 @@ class User(Base):
     savedjobs = relationship("SavedJob", back_populates="job_seeker", cascade="all, delete")
 
 
-# =========================
 # RESUME
-# =========================
 class Resume(Base):
     __tablename__ = "resume"
 
@@ -75,9 +70,7 @@ class Resume(Base):
     user = relationship("User", back_populates="resume")
 
 
-# =========================
 # INDUSTRY DOMAINS
-# =========================
 class IndustryDomain(Base):
     __tablename__ = "industrydomains"
 
@@ -87,9 +80,8 @@ class IndustryDomain(Base):
     jobs = relationship("Job", back_populates="industry")
 
 
-# =========================
 # LOCATIONS
-# =========================
+
 class Location(Base):
     __tablename__ = "locations"
 
@@ -103,9 +95,8 @@ class Location(Base):
     )
 
 
-# =========================
+
 # JOB
-# =========================
 class Job(Base):
     __tablename__ = "job"
 
@@ -152,9 +143,7 @@ class Job(Base):
     )
 
 
-# =========================
 # APPLICATIONS
-# =========================
 class Application(Base):
     __tablename__ = "applications"
 
@@ -179,9 +168,8 @@ class Application(Base):
     job = relationship("Job", back_populates="applications")
 
 
-# =========================
+
 # SAVED JOBS
-# =========================
 class SavedJob(Base):
     __tablename__ = "savedjobs"
 
@@ -206,9 +194,8 @@ class SavedJob(Base):
     job = relationship("Job", back_populates="savedjobs")
 
 
-# =========================
+
 # JOB LOCATIONS (M2M)
-# =========================
 class JobLocation(Base):
     __tablename__ = "job_locations"
 

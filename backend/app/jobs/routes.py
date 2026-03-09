@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException,status
 from sqlalchemy.orm import Session,joinedload
 from datetime import datetime, timezone
 
-from app.schemas import JobPostRequest, JobPostResponse,PostedJobResponse,DeleteJobResponse
+from app.schemas import JobPostRequest, JobPostResponse,JobResponse,DeleteJobResponse
 from app.database import get_db
 from app.models import Job, Location, IndustryDomain
 from .utils import create_job_embedding
@@ -67,7 +67,7 @@ def create_job(
     return new_job
 
 
-@router.get("/postedjobs", response_model=List[PostedJobResponse])
+@router.get("/postedjobs", response_model=List[JobResponse])
 def get_posted_jobs(
     db: Session = Depends(get_db),
     current_recruiter: dict = Depends(get_current_recruiter)
@@ -77,15 +77,18 @@ def get_posted_jobs(
         db.query(Job)
         .options(joinedload(Job.locations))
         .filter(Job.recruiter_id == current_recruiter["user_id"])
+        .order_by(Job.posted_at.desc()) 
         .all()
     )
 
     return [
-        PostedJobResponse(
+        JobResponse(
             job_id=job.job_id,
             job_title=job.job_title,
+            company_name=job.company_name,
             locations=[loc.name for loc in job.locations],
-            job_description=job.job_description
+            job_description=job.job_description,
+            min_experience=job.min_experience
         )
         for job in jobs
     ]

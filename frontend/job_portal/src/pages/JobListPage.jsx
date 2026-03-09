@@ -1,181 +1,139 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import JobCard from "../components/jobCard";
+import Logout from "../components/auth/Logout";
+import api from "../api/axios";
 import "./JobListPage.css";
 
 function JobListPage() {
-  // Filter Options 
+  const [domains, setDomains] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [jobs, setJobs] = useState([]);
+  const [savedJobIds, setSavedJobIds] = useState([]);
+  const [appliedJobIds, setAppliedJobIds] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const domains = [
-    "Technology / IT",
-    "Software Development",
-    "Artificial Intelligence & ML",
-    "Data Science & Analytics"
-  ];
-
-  const locations = [
-    "Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisgarh",
-    "Goa","Gujarat","Haryana","Himachal Pradesh","Jharkhand",
-    "Karnataka","Kerala","Madhya Pradesh","Maharashtra","Manipur",
-    "Meghalaya","Mizoram","Nagaland","Odisha","Punjab",
-    "Rajasthan","Sikkim","Tamil Nadu","Telangana","Tripura",
-    "Uttar Pradesh","Uttarakhand","West Bengal",
-    "Andaman and Nicobar Islands","Chandigarh",
-    "Dadra and Nagar Haveli and Daman and Diu",
-    "Delhi","Jammu and Kashmir","Ladakh","Lakshadweep","Puducherry",
-    "Remote"
-  ];
-
-  const experienceOptions = [
-    ...Array.from({ length: 16 }, (_, i) => i),
-    "15+"
-  ];
-
-  // ------------------ Job Data ------------------
-
-  const allJobs = [
-    {
-      id: 1,
-      title: "Frontend Developer",
-      company: "TechFlow Systems",
-      location: "Gujarat",
-      domain: "Technology / IT",
-      experience: 2,
-      salary: "₹6L - ₹10L",
-      type: "Full-time",
-      match: 82,
-      description:
-        "Looking for a React developer with experience in modern UI frameworks and REST API integration."
-    },
-    {
-      id: 2,
-      title: "Data Scientist",
-      company: "Neon Health",
-      location: "Karnataka",
-      domain: "Data Science & Analytics",
-      experience: 5,
-      salary: "₹12L - ₹18L",
-      type: "Full-time",
-      match: 91,
-      description:
-        "Seeking a Data Scientist skilled in Python, ML models, and data visualization tools."
-    }
-  ];
-
-  // States 
-
-  const [jobs, setJobs] = useState(allJobs);
-  const [domain, setDomain] = useState("");
-  const [location, setLocation] = useState("");
+  // Filter States (Storing IDs)
+  const [domainId, setDomainId] = useState("");
+  const [locationId, setLocationId] = useState("");
   const [experience, setExperience] = useState("");
 
-  // Filter Logic 
+  const experienceOptions = [...Array.from({ length: 31 }, (_, i) => i)];
 
-  const applyFilters = () => {
-    const filtered = allJobs.filter((job) => {
-      const domainMatch = domain ? job.domain === domain : true;
-      const locationMatch = location ? job.location === location : true;
+  useEffect(() => {
+    const initData = async () => {
+      try {
+        const [domainRes, locationRes, jobsRes, savedRes, appliedRes] = await Promise.all([
+          api.get("/jobs/industry-domains"),
+          api.get("/jobs/locations"),
+          api.get("/recommendations/jobs"),
+          api.get("/applications/saved-jobs"),
+          api.get("/applications/applied-jobs"),
+        ]);
 
-      let experienceMatch = true;
-      return domainMatch && locationMatch && experienceMatch;
-    });
+        setDomains(domainRes.data);
+        setLocations(locationRes.data);
+        setJobs(jobsRes.data);
+        setSavedJobIds(savedRes.data);
+        setAppliedJobIds(appliedRes.data);
+      } catch (error) {
+        console.error("Initialization failed", error);
+      }
+    };
+    initData();
+  }, []);
 
-    setJobs(filtered);
+  const applyFilters = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get("/recommendations/jobs", {
+        params: {
+          domain_id: domainId || undefined,
+          location_id: locationId || undefined,
+          experience: experience || undefined,
+        },
+      });
+      setJobs(response.data);
+    } catch (error) {
+      console.error("Filtering failed", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const resetFilters = () => {
-    setDomain("");
-    setLocation("");
+  const resetFilters = async () => {
+    setDomainId("");
+    setLocationId("");
     setExperience("");
-    setJobs(allJobs);
+    setLoading(true);
+    try {
+      const res = await api.get("/recommendations/jobs");
+      setJobs(res.data);
+    } finally {
+      setLoading(false);
+    }
   };
-
-  // ------------------ JSX ------------------
 
   return (
-    <div className="job-page">
-      {/* Sidebar */}
-      <aside className="filters">
-        <h3 className="filters-title">Filters</h3>
-        <p className="filters-subtitle">
-          Refine jobs based on your preferences
-        </p>
+    <div className="page-container">
+      <div className="top-bar"><Logout /></div>
+      <div className="job-page">
+        <aside className="filters">
+          <h3 className="filters-title">Filters</h3>
 
-        {/* Industry Domain */}
-        <div className="filter-group">
-          <label>Industry Domain</label>
-          <select value={domain} onChange={(e) => setDomain(e.target.value)}>
-            <option value="">Select</option>
-            {domains.map((item, index) => (
-              <option key={index} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Location */}
-        <div className="filter-group">
-          <label>Location</label>
-          <select value={location} onChange={(e) => setLocation(e.target.value)}>
-            <option value="">Select</option>
-            {locations.map((item, index) => (
-              <option key={index} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Experience */}
-        <div className="filter-group">
-          <label>Experience (Years)</label>
-          <select
-            value={experience}
-            onChange={(e) => setExperience(e.target.value)}
-          >
-            <option value="">Select</option>
-            {experienceOptions.map((exp, index) => (
-              <option key={index} value={exp}>
-                {exp === "15+" ? "15+ Years" : `${exp} Years`}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Resume Upload (UI only for now) */}
-        <div className="upload-box">
-          <button className="browse-btn">Browse</button>
-          <p>Drop a file here</p>
-          <small>*PDF file supported</small>
-        </div>
-
-        <div className="filter-actions">
-          <button className="apply-btn" onClick={applyFilters}>
-            Apply Filters
-          </button>
-          <button className="reset-btn" onClick={resetFilters}>
-            Reset All Filters
-          </button>
-        </div>
-      </aside>
-
-      {/* Job List */}
-      <main className="job-list">
-        <h3>Job Listings</h3>
-        <p className="subtitle">
-          Based on your current filters and profile preferences.
-        </p>
-
-        {jobs.length === 0 && (
-          <div className="empty-state">
-            No jobs found for selected filters
+          <div className="filter-group">
+            <label>Industry Domain</label>
+            <select value={domainId} onChange={(e) => setDomainId(e.target.value)}>
+              <option value="">All Domains</option>
+              {domains.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
           </div>
-        )}
 
-        {jobs.map((job) => (
-          <JobCard key={job.id} job={job} />
-        ))}
-      </main>
+          <div className="filter-group">
+            <label>Location</label>
+            <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
+              <option value="">All Locations</option>
+              {locations.map((item) => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-group">
+            <label>Experience (Years)</label>
+            <select value={experience} onChange={(e) => setExperience(e.target.value)}>
+              <option value="">Any Experience</option>
+              {experienceOptions.map((exp) => (
+                <option key={exp} value={exp}>{exp} Years</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-actions">
+            <button className="apply-btn" onClick={applyFilters} disabled={loading}>
+              {loading ? "Searching..." : "Apply Filters"}
+            </button>
+            <button className="reset-btn" onClick={resetFilters}>Reset All</button>
+          </div>
+        </aside>
+
+        <main className="job-list">
+          <h3>Job Listings</h3>
+          {jobs.length === 0 ? (
+            <div className="empty-state">No jobs found</div>
+          ) : (
+            jobs.map((job) => (
+              <JobCard
+                key={job.job_id}
+                job={job}
+                isSaved={savedJobIds.includes(job.job_id)}
+                isApplied={appliedJobIds.includes(job.job_id)}
+              />
+            ))
+          )}
+        </main>
+      </div>
     </div>
   );
 }

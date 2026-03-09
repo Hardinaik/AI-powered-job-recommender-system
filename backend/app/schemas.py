@@ -1,4 +1,5 @@
-from pydantic import BaseModel, EmailStr
+import re
+from pydantic import BaseModel, EmailStr,field_validator
 from typing import Literal,List
 from uuid import UUID
 from datetime import datetime
@@ -9,6 +10,18 @@ class SignupRequest(BaseModel):
     email: EmailStr
     password: str
     user_role: Literal["jobseeker", "recruiter"]
+    @field_validator("password")
+    def validate_password(cls, value):
+        pattern = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$'
+
+        if not re.match(pattern, value):
+            raise ValueError(
+                "Password must be at least 8 characters long and include "
+                "uppercase, lowercase, number, and special character."
+            )
+        return value
+
+
 
 class LoginRequest(BaseModel):
     email:EmailStr
@@ -34,22 +47,20 @@ class JobPostResponse(BaseModel):
     job_id: UUID
     job_title: str
     company_name: str
-    min_experience: int
 
     class Config:
         from_attributes = True
 
-class PostedJobResponse(BaseModel):
+class JobResponse(BaseModel):
     job_id: UUID
     job_title: str
     locations: List[str]
     job_description: str
-
+    min_experience: int
+    company_name:str
     
     class Config:
         from_attributes = True
-
-
 
 
 class DeleteJobResponse(BaseModel):
@@ -58,5 +69,8 @@ class DeleteJobResponse(BaseModel):
 class SaveJobResponse(BaseModel):
     job_id:UUID
     message: str
+
+
+
 
 

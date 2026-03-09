@@ -48,11 +48,21 @@ function SignUp() {
       }
 
     } catch (err) {
-      if (err.response?.data?.detail) {
-        setError(err.response.data.detail);
-      } else {
-        setError("Signup failed. Please try again.");
-      }
+        
+        if (err.response?.data?.detail) {
+
+          const detail = err.response.data.detail;
+
+          if (Array.isArray(detail)) {
+            setError(detail[0].msg); 
+          } else {
+            setError(detail); 
+          }
+
+        } else {
+          setError("Signup failed. Please try again.");
+        }
+
     } finally {
       setLoading(false);
     }
