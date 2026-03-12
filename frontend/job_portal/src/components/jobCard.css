@@ -5,6 +5,7 @@
   border: 1px solid #e5e7eb;
   margin-bottom: 18px;
   transition: 0.2s ease;
+  position: relative;
 }
 
 .job-card:hover {
@@ -155,6 +156,23 @@
   background-color: hsl(228, 70%, 46%);
 }
 
+.match-badge {
+  position: absolute;
+  top: 18px;    /* Matches parent card's top padding */
+  right: 18px;  /* Matches parent card's right padding */
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  
+  /* Modern Blue Palette */
+  background: #eff6ff; /* Very light blue */
+  color: #2563eb;      /* Brand blue */
+  border: 1px solid #bfdbfe; /* Subtle blue border */
+}
+
 
 /* Tablet (1024px and below) */
 @media (max-width: 1024px) {
@@ -224,5 +242,16 @@
   
   .company {
     font-size: 12px;
+  }
+
+  .job-card-header {
+    padding-right: 75px; /* Make space for the badge */
+  }
+  
+  .match-badge {
+    top: 12px;
+    right: 12px;
+    font-size: 10px;
+    padding: 3px 10px;
   }
 }

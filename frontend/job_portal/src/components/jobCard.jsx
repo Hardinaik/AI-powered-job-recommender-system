@@ -18,7 +18,6 @@ function JobCard({ job, isSaved, isApplied }) {
 
   const handleSaveJob = async () => {
     if (saved) return;
-
     try {
       await api.post(`/applications/jobs/${job.job_id}/save`);
       setSaved(true);
@@ -33,7 +32,6 @@ function JobCard({ job, isSaved, isApplied }) {
 
   const handleApplyJob = async () => {
     if (applied) return;
-
     try {
       await api.post(`/applications/job/${job.job_id}/apply`);
       setApplied(true);
@@ -48,6 +46,13 @@ function JobCard({ job, isSaved, isApplied }) {
 
   return (
     <div className="job-card">
+      {/* Match Score Badge - Top Right */}
+      {job.match_score > 0 && (
+        <div className="match-badge">
+          {Math.round(job.match_score)}% Match
+        </div>
+      )}
+
       <div className="job-card-header">
         <div className="job-title">
           <div>

@@ -1,0 +1,33 @@
+.loader-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100vh;
+  background: rgba(255,255,255,0.7);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.progress-circle {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 6px solid #d6d6d6;
+  border-top: 6px solid #3b5bfd;
+  animation: spin 1s linear infinite;
+}
+
+.loader-text {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #444;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

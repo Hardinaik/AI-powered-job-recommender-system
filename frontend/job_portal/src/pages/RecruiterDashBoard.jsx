@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import "./RecruiterDashBoard.css";
 import JobPostCard from "../components/JobPostCard";
-import Logout from "../components/auth/Logout"
+import Logout from "../components/auth/Logout";
+import Loader from "../components/loader";
 import { FaPlus } from "react-icons/fa";
 import axios from "axios";
 import Select from "react-select";
@@ -13,15 +14,14 @@ const RecruiterDashBoard = () => {
   const [jobs, setJobs] = useState([]);
   const [locations, setLocations] = useState([]);
   const [domains, setDomains] = useState([]);
-  const [loadingPost, setLoadingPost] = useState(false);
-  const [loadingJobs, setLoadingJobs] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     company_name: "",
     job_title: "",
     location_ids: [],
     industry_domain_id: "",
-    min_experience: "", 
+    min_experience: "",
     job_description: "",
   });
 
@@ -45,13 +45,15 @@ const RecruiterDashBoard = () => {
 
   const fetchJobs = async () => {
     try {
-      setLoadingJobs(true);
+      setLoading(true);
+
       const res = await axios.get(`${API_BASE}/jobs/postedjobs`, {
         headers: { Authorization: `Bearer ${token}` },
       });
+
       setJobs(res.data);
     } finally {
-      setLoadingJobs(false);
+      setLoading(false);
     }
   };
 
@@ -84,7 +86,7 @@ const RecruiterDashBoard = () => {
     }
 
     try {
-      setLoadingPost(true);
+      setLoading(true);
 
       await axios.post(
         `${API_BASE}/jobs/post`,
@@ -98,7 +100,6 @@ const RecruiterDashBoard = () => {
         }
       );
 
-      // Reset form
       setFormData({
         company_name: "",
         job_title: "",
@@ -108,12 +109,13 @@ const RecruiterDashBoard = () => {
         job_description: "",
       });
 
-      fetchJobs();
+      await fetchJobs();
+
       alert("Job successfully posted!");
     } catch (err) {
       alert("Failed to post job");
     } finally {
-      setLoadingPost(false);
+      setLoading(false);
     }
   };
 
@@ -122,11 +124,17 @@ const RecruiterDashBoard = () => {
   };
 
   const deleteJob = async (job_id) => {
-    await axios.delete(`${API_BASE}/jobs/${job_id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    try {
+      setLoading(true);
 
-    setJobs((prev) => prev.filter((job) => job.job_id !== job_id));
+      await axios.delete(`${API_BASE}/jobs/${job_id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setJobs((prev) => prev.filter((job) => job.job_id !== job_id));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const locationOptions = locations.map((loc) => ({
@@ -136,13 +144,18 @@ const RecruiterDashBoard = () => {
 
   return (
     <div className="page-container">
+
+      {loading && <Loader />}
+
       <div className="top-bar">
-        <Logout/>
+        <Logout />
       </div>
+
       <div className="workspace-container">
         <h1 className="workspace-title">Recruiter Workspace</h1>
 
         <div className="workspace-grid">
+
           <div className="post-job-card">
             <h2>
               <FaPlus className="icon-blue" /> Post a New Job
@@ -217,18 +230,16 @@ const RecruiterDashBoard = () => {
             <button
               className="publish-btn"
               onClick={handleSubmit}
-              disabled={loadingPost}
+              disabled={loading}
             >
-              {loadingPost ? "Posting..." : "Publish Job Posting"}
+               Publish Job Posting
             </button>
           </div>
 
           <div className="jobs-section">
             <h2>Your Posted Jobs</h2>
 
-            {loadingJobs ? (
-              <p className="info-text">Loading your jobs...</p>
-            ) : jobs.length === 0 ? (
+            {jobs.length === 0 ? (
               <p className="info-text">No jobs posted yet.</p>
             ) : (
               jobs.map((job) => (
@@ -241,7 +252,9 @@ const RecruiterDashBoard = () => {
                 />
               ))
             )}
+
           </div>
+
         </div>
       </div>
     </div>

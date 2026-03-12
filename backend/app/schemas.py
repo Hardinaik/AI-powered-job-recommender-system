@@ -1,5 +1,5 @@
 import re
-from pydantic import BaseModel, EmailStr,field_validator
+from pydantic import BaseModel, EmailStr,field_validator,Field
 from typing import Literal,List
 from uuid import UUID
 from datetime import datetime
@@ -69,6 +69,22 @@ class DeleteJobResponse(BaseModel):
 class SaveJobResponse(BaseModel):
     job_id:UUID
     message: str
+
+class RecJobResponse(BaseModel):
+    job_id: UUID
+    job_title: str
+    locations: List[str]
+    job_description: str
+    min_experience: int
+    company_name:str
+    match_score:float = Field(..., description="The AI-calculated similarity score (0-100)")
+
+    class Config:
+        from_attributes = True
+
+
+    
+
 
 
 

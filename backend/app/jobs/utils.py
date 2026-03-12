@@ -8,6 +8,15 @@ import os
 from dotenv import load_dotenv
 
 
+load_dotenv()
+model = SentenceTransformer('all-MiniLM-L6-v2')
+API_Key=os.getenv("API_Key")
+llm=ChatGoogleGenerativeAI(
+        model="gemini-2.5-flash",
+        temperature=0,
+        google_api_key= API_Key
+)
+
 template = """
 Read the following Job Description:
 {jd}
@@ -49,18 +58,7 @@ Return strictly in this format:
 
 
 
-def create_llm_model():
-    load_dotenv()
-    API_Key=os.getenv("API_Key")
-    llm=ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        temperature=0,
-        google_api_key= API_Key
-    )
-    return llm
-
 def extract_json(jd):
-    llm = create_llm_model() 
     prompt = PromptTemplate.from_template(template)
     chain=prompt | llm | JsonOutputParser()
     extracted_jd = chain.invoke({"jd": jd})
@@ -69,7 +67,6 @@ def extract_json(jd):
 
 def create_job_embedding(jd):
     document = extract_json(jd)
-    model = SentenceTransformer('all-MiniLM-L6-v2')
     
     job_skills = document['skills']
     job_work_summary = document['responsibilities']
