@@ -4,12 +4,14 @@
   padding: 24px;
   margin-bottom: 20px;
   border: 1px solid #e5e7eb;
-  transition: all 0.25s ease;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
 }
 
 .job-card:hover {
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  border-color: #c7d2fe;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+  background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%);
 }
 
 .job-header {
@@ -23,6 +25,11 @@
   font-weight: 600;
   margin-bottom: 8px;
   color: #111827;
+  transition: color 0.2s ease;
+}
+
+.job-card:hover .job-title {
+  color: #2563eb;
 }
 
 .job-location {
@@ -40,6 +47,7 @@
 }
 
 /* Location badges */
+
 .location-badges {
   display: flex;
   flex-wrap: wrap;
@@ -69,11 +77,12 @@
   border: none;
   cursor: pointer;
   font-size: 13px;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, transform 0.15s ease;
 }
 
 .details-btn:hover {
   background-color: #2448c7;
+  transform: translateY(-1px);
 }
 
 .delete-icon {

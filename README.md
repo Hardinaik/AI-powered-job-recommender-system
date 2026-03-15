@@ -210,6 +210,7 @@ http://localhost:3000
 - `POST /auth/signup`
 - `POST /auth/login`
 
+
 ### 💼 Jobs
 - `POST /jobs/post`
 - `GET /jobs/postedjobs`
@@ -217,8 +218,19 @@ http://localhost:3000
 - `GET /jobs/locations`
 - `GET /jobs/industry-domains`
 
-### 📄 Resume
-- in progress
+### Recommendations
+- 'POST /recommendations/jobs'
+
+### Applications
+
+-'POST /applications/jobs/{job_id}/save'
+-'POST /applications/jobs/{job_id}/apply'
+-'GET /applications/saved-jobs/ids'
+-'GET /applications/applied-jobs/ids'
+-'GET /applications/saved-jobs/details'
+-'GET /applications/applied-jobs/details'
+
+
 
 ---
 

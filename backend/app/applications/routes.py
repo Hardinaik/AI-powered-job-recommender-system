@@ -1,16 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException,status
-from sqlalchemy.orm import Session
-from datetime import datetime, timezone
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.utils import get_current_jobseeker
 from typing import List
 from uuid import UUID
-from app.schemas import SaveJobResponse
-from app.models import Job,SavedJob,Application
+from app.schemas import SaveJobResponse, JobResponse
+from app.models import Job, SavedJob, Application
 from sqlalchemy.exc import IntegrityError
 
-
 router = APIRouter(prefix="/applications", tags=["Applications"])
+
+# --- ACTIONS (POST) ---
 
 @router.post("/jobs/{job_id}/save", response_model=SaveJobResponse)
 def save_job(
@@ -19,46 +19,18 @@ def save_job(
     current_user: dict = Depends(get_current_jobseeker)
 ):
     job = db.query(Job).filter(Job.job_id == job_id).first()
-    
     if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+        raise HTTPException(status_code=404, detail="Job not found")
 
-    saved_job = SavedJob(
-        job_seeker_id=current_user["user_id"],
-        job_id=job_id
-    )
-
+    saved_job = SavedJob(job_seeker_id=current_user["user_id"], job_id=job_id)
     try:
         db.add(saved_job)
         db.commit()
-
     except IntegrityError:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Job already saved"
-        )
+        raise HTTPException(status_code=409, detail="Job already saved")
 
-    return SaveJobResponse(
-        job_id=job_id,
-        message="Job saved successfully"
-    )
-
-
-@router.get("/saved-jobs", response_model=List[UUID])
-def get_saved_jobs(
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_jobseeker)
-):
-
-    saved_jobs = db.query(SavedJob.job_id).filter(
-        SavedJob.job_seeker_id == current_user["user_id"]
-    ).all()
-
-    return [job.job_id for job in saved_jobs]
+    return SaveJobResponse(job_id=job_id, message="Job saved successfully")
 
 @router.post("/job/{job_id}/apply", response_model=UUID)
 def apply_job(
@@ -66,44 +38,90 @@ def apply_job(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_jobseeker)
 ):
-
     job = db.query(Job).filter(Job.job_id == job_id).first()
-
     if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Job not found"
-        )
+        raise HTTPException(status_code=404, detail="Job not found")
 
-    application = Application(
-        job_seeker_id=current_user["user_id"],
-        job_id=job_id
-    )
-
+    application = Application(job_seeker_id=current_user["user_id"], job_id=job_id)
     try:
         db.add(application)
         db.commit()
-        db.refresh(application)
-
     except IntegrityError:
         db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Already applied to this job"
-        )
+        raise HTTPException(status_code=409, detail="Already applied to this job")
 
     return job_id
 
-@router.get("/applied-jobs", response_model=list[UUID])
-def get_applied_jobs(
+
+# --- STATE PERSISTENCE (GET IDs ONLY) ---
+# Use these for highlighting buttons on the main list
+
+@router.get("/saved-jobs/ids", response_model=List[UUID])
+def get_saved_job_ids(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_jobseeker)
 ):
+    saved_jobs = db.query(SavedJob.job_id).filter(
+        SavedJob.job_seeker_id == current_user["user_id"]
+    ).all()
+    return [job.job_id for job in saved_jobs]
 
+@router.get("/applied-jobs/ids", response_model=List[UUID])
+def get_applied_job_ids(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_jobseeker)
+):
+    applied_jobs = db.query(Application.job_id).filter(
+        Application.job_seeker_id == current_user["user_id"]
+    ).all()
+    return [job.job_id for job in applied_jobs]
+
+
+# --- VIEW CONTENT (GET FULL DETAILS) ---
+# Use these when the user clicks the "Saved" or "Applied" tabs
+
+@router.get("/saved-jobs/details", response_model=List[JobResponse])
+def get_saved_jobs_details(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_jobseeker)
+):
     jobs = (
-        db.query(Application.job_id)
-        .filter(Application.job_seeker_id == current_user["user_id"])
+        db.query(Job)
+        .join(SavedJob, SavedJob.job_id == Job.job_id)
+        .filter(SavedJob.job_seeker_id == current_user["user_id"])
+        .options(joinedload(Job.locations))
         .all()
     )
+    return [
+        JobResponse(
+            job_id=job.job_id,
+            job_title=job.job_title,
+            locations=[loc.name for loc in job.locations],
+            job_description=job.job_description,
+            min_experience=job.min_experience,
+            company_name=job.company_name
+        ) for job in jobs
+    ]
 
-    return [job.job_id for job in jobs]
+@router.get("/applied-jobs/details", response_model=List[JobResponse])
+def get_applied_jobs_details(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_jobseeker)
+):
+    jobs = (
+        db.query(Job)
+        .join(Application, Application.job_id == Job.job_id)
+        .filter(Application.job_seeker_id == current_user["user_id"])
+        .options(joinedload(Job.locations))
+        .all()
+    )
+    return [
+        JobResponse(
+            job_id=job.job_id,
+            job_title=job.job_title,
+            locations=[loc.name for loc in job.locations],
+            job_description=job.job_description,
+            min_experience=job.min_experience,
+            company_name=job.company_name
+        ) for job in jobs
+    ]

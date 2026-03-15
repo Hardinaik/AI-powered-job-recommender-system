@@ -4,13 +4,15 @@
   padding: 18px;
   border: 1px solid #e5e7eb;
   margin-bottom: 18px;
-  transition: 0.2s ease;
   position: relative;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
 }
 
 .job-card:hover {
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  border-color: #c7d2fe;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
+  background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%);
 }
 
 /* header */
@@ -30,6 +32,11 @@
   margin: 0;
   font-size: 16px;
   font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.job-card:hover .job-title h3 {
+  color: #2563eb;
 }
 
 .company {
@@ -87,16 +94,16 @@
   border-radius: 10px;
   cursor: pointer;
   font-weight: 500;
-  transition: 0.2s ease;
+  transition: background 0.2s ease, transform 0.15s ease;
 }
 
 .apply-btn:hover {
   background: #1d4ed8;
+  transform: translateY(-1px);
 }
 
-
-
 /* save button */
+
 .save-btn {
   background: white;
   border: 1px solid #e5e7eb;
@@ -118,6 +125,7 @@
 }
 
 /* saved bookmark state */
+
 .save-btn.saved {
   background: #eff6ff; 
   border-color: #2563eb;
@@ -134,7 +142,6 @@
   opacity: 0.9;
 }
 
-
 .save-btn svg {
   display: block;
 }
@@ -149,32 +156,31 @@
   border: none;
   cursor: pointer;
   font-size: 13px;
-  transition: background 0.2s ease;
+  transition: background 0.2s ease, transform 0.15s ease;
 }
 
 .details-btn:hover {
   background-color: hsl(228, 70%, 46%);
+  transform: translateY(-1px);
 }
 
 .match-badge {
   position: absolute;
-  top: 18px;    /* Matches parent card's top padding */
-  right: 18px;  /* Matches parent card's right padding */
+  top: 18px;
+  right: 18px;
   padding: 4px 12px;
   border-radius: 20px;
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  
-  /* Modern Blue Palette */
-  background: #eff6ff; /* Very light blue */
-  color: #2563eb;      /* Brand blue */
-  border: 1px solid #bfdbfe; /* Subtle blue border */
+  background: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
 }
 
+/* Tablet */
 
-/* Tablet (1024px and below) */
 @media (max-width: 1024px) {
   .job-page {
     flex-direction: column;
@@ -192,9 +198,10 @@
   }
 }
 
-/* Mobile (768px and below) */
+/* Mobile */
+
 @media (max-width: 768px) {
-  /* Layout Adjustments */
+
   .job-page {
     flex-direction: column;
     align-items: center;
@@ -202,32 +209,29 @@
 
   .job-list {
     width: 100%;
-    padding: 12px; /* Tighter padding for mobile screens */
+    padding: 12px;
   }
 
-  /* Filter Sidebar Button - Should stay full width */
-  .filter-actions .apply-btn, 
+  .filter-actions .apply-btn,
   .filter-actions .reset-btn {
     width: 100%;
     display: block;
   }
 
-  /* Job Card Footer - Fixing the stretch issue */
   .job-card-footer {
     display: flex;
-    flex-direction: row; /* Keep buttons side-by-side or use column with start alignment */
+    flex-direction: row;
     justify-content: space-between;
-    align-items: center; 
+    align-items: center;
     gap: 10px;
   }
 
-  /* SPECIFIC FIX: Only target the button inside the job card */
   .job-card .apply-btn {
-    width: auto !important; /* Force it to ignore the 100% width from filter-actions */
+    width: auto !important;
     min-width: 100px;
     padding: 8px 20px;
     font-size: 14px;
-    flex-shrink: 0; /* Prevents button from squishing */
+    flex-shrink: 0;
   }
 
   .job-card .details-btn {
@@ -235,19 +239,18 @@
     padding: 8px 12px;
   }
 
-  /* Header adjustments */
   .job-title h3 {
     font-size: 15px;
   }
-  
+
   .company {
     font-size: 12px;
   }
 
   .job-card-header {
-    padding-right: 75px; /* Make space for the badge */
+    padding-right: 75px;
   }
-  
+
   .match-badge {
     top: 12px;
     right: 12px;

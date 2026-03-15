@@ -3,11 +3,12 @@ import { FaBookmark } from "react-icons/fa";
 import api from "../api/axios";
 import "./jobCard.css";
 
-function JobCard({ job, isSaved, isApplied }) {
+function JobCard({ job, isSaved, isApplied, onStatusChange }) {
   const [showDetails, setShowDetails] = useState(false);
   const [saved, setSaved] = useState(isSaved);
   const [applied, setApplied] = useState(isApplied);
 
+  // Synchronize local state with parent props
   useEffect(() => {
     setSaved(isSaved);
   }, [isSaved]);
@@ -21,9 +22,11 @@ function JobCard({ job, isSaved, isApplied }) {
     try {
       await api.post(`/applications/jobs/${job.job_id}/save`);
       setSaved(true);
+      if (onStatusChange) onStatusChange(job.job_id, "save");
     } catch (error) {
       if (error.response?.status === 409) {
         setSaved(true);
+        if (onStatusChange) onStatusChange(job.job_id, "save");
       } else {
         alert(error.response?.data?.detail || "Failed to save job");
       }
@@ -35,9 +38,11 @@ function JobCard({ job, isSaved, isApplied }) {
     try {
       await api.post(`/applications/job/${job.job_id}/apply`);
       setApplied(true);
+      if (onStatusChange) onStatusChange(job.job_id, "apply");
     } catch (error) {
       if (error.response?.status === 409) {
         setApplied(true);
+        if (onStatusChange) onStatusChange(job.job_id, "apply");
       } else {
         alert(error.response?.data?.detail || "Failed to apply");
       }
@@ -46,7 +51,6 @@ function JobCard({ job, isSaved, isApplied }) {
 
   return (
     <div className="job-card">
-      {/* Match Score Badge - Top Right */}
       {job.match_score > 0 && (
         <div className="match-badge">
           {Math.round(job.match_score)}% Match
@@ -67,16 +71,11 @@ function JobCard({ job, isSaved, isApplied }) {
       <div className="job-description">
         <div className="jd-header">
           <strong>JOB DESCRIPTION</strong>
-          <button
-            className="details-btn"
-            onClick={() => setShowDetails(!showDetails)}
-          >
+          <button className="details-btn" onClick={() => setShowDetails(!showDetails)}>
             {showDetails ? "Hide Details" : "View Details"}
           </button>
         </div>
-        <p className={showDetails ? "" : "jd-preview"}>
-          {job.job_description}
-        </p>
+        <p className={showDetails ? "" : "jd-preview"}>{job.job_description}</p>
       </div>
 
       <div className="job-card-footer">
