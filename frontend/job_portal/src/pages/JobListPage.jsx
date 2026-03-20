@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import JobCard from "../components/jobCard";
 import Logout from "../components/auth/Logout";
 import Loader from "../components/loader";
@@ -6,6 +7,7 @@ import api from "../api/axios";
 import "./JobListPage.css";
 
 function JobListPage() {
+  const navigate = useNavigate();
   const [domains, setDomains] = useState([]);
   const [locations, setLocations] = useState([]);
   const [jobs, setJobs] = useState([]);
@@ -148,6 +150,12 @@ const fetchJobsWithEmptyFilters = async () => {
         <button className={`top-btn ${view === "all" ? "active" : ""}`} onClick={() => setView("all")}>All Jobs</button>
         <button className={`top-btn ${view === "saved" ? "active" : ""}`} onClick={() => setView("saved")}>Saved Jobs</button>
         <button className={`top-btn ${view === "applied" ? "active" : ""}`} onClick={() => setView("applied")}>Applied Jobs</button>
+        <button 
+          className="profile-btn" 
+          onClick={() => navigate("/profile")}
+        >
+          Profile
+        </button>
         <Logout />
       </div>
 

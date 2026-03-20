@@ -1,8 +1,13 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Inter",sans-serif;
+}
+
 .page-container{
   background: #f8fafc;
 }
-
-
 
 
 .top-bar {
@@ -35,16 +40,23 @@
   color: white;
 }
 
+.profile-btn{
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+
 .job-page {
   display: flex;
   height: calc(100vh - 60px);
   overflow: hidden;
 }
-
-
-
-
-/* Sidebar */
 
 .filters {
   width: 280px;
