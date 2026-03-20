@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "./RecruiterDashBoard.css";
 import JobPostCard from "../components/JobPostCard";
 import Logout from "../components/auth/Logout";
@@ -10,6 +11,7 @@ import Select from "react-select";
 const API_BASE = "http://127.0.0.1:8000";
 
 const RecruiterDashBoard = () => {
+  const navigate = useNavigate();
   const [expandedJobId, setExpandedJobId] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -46,11 +48,9 @@ const RecruiterDashBoard = () => {
   const fetchJobs = async () => {
     try {
       setLoading(true);
-
       const res = await axios.get(`${API_BASE}/jobs/postedjobs`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       setJobs(res.data);
     } finally {
       setLoading(false);
@@ -69,9 +69,17 @@ const RecruiterDashBoard = () => {
     setFormData({ ...formData, location_ids: ids });
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    // manual validation (react-select)
     if (formData.location_ids.length === 0) {
       alert("Please select at least one location.");
+      return;
+    }
+
+    if (!formData.company_name || !formData.job_title) {
+      alert("Please fill all required fields.");
       return;
     }
 
@@ -100,6 +108,7 @@ const RecruiterDashBoard = () => {
         }
       );
 
+      // reset form
       setFormData({
         company_name: "",
         job_title: "",
@@ -144,10 +153,15 @@ const RecruiterDashBoard = () => {
 
   return (
     <div className="page-container">
-
       {loading && <Loader />}
 
       <div className="top-bar">
+        <button 
+          className="profile-btn" 
+          onClick={() => navigate("/profile")}
+        >
+          Profile
+        </button>
         <Logout />
       </div>
 
@@ -156,43 +170,29 @@ const RecruiterDashBoard = () => {
 
         <div className="workspace-grid">
 
-          <div className="post-job-card">
+          {/* FORM */}
+          <form className="post-job-card" onSubmit={handleSubmit}>
             <h2>
               <FaPlus className="icon-blue" /> Post a New Job
             </h2>
 
-            <label>Company Name</label>
+            
+
+            <label className="required">Company Name</label>
             <input
               type="text"
               name="company_name"
               value={formData.company_name}
               onChange={handleChange}
+              required
             />
 
-            <label>Job Title</label>
-            <input
-              type="text"
-              name="job_title"
-              value={formData.job_title}
-              onChange={handleChange}
-            />
-
-            <label>Locations</label>
-            <Select
-              options={locationOptions}
-              isMulti
-              placeholder="Search & select locations..."
-              value={locationOptions.filter((option) =>
-                formData.location_ids.includes(option.value)
-              )}
-              onChange={handleLocationChange}
-            />
-
-            <label>Industry Domain</label>
+            <label className="required">Industry Domain</label>
             <select
               name="industry_domain_id"
               value={formData.industry_domain_id}
               onChange={handleChange}
+              required
             >
               <option value="" disabled>
                 Select Domain
@@ -204,11 +204,34 @@ const RecruiterDashBoard = () => {
               ))}
             </select>
 
-            <label>Minimum Required Experience (Years)</label>
+            <label className="required">Job Title</label>
+            <input
+              type="text"
+              name="job_title"
+              value={formData.job_title}
+              onChange={handleChange}
+              required
+            />
+
+            <label className="required">Locations</label>
+            <Select
+              options={locationOptions}
+              isMulti
+              placeholder="Search & select locations..."
+              value={locationOptions.filter((option) =>
+                formData.location_ids.includes(option.value)
+              )}
+              onChange={handleLocationChange}
+            />
+
+            <label className="required">
+              Minimum Required Experience (Years)
+            </label>
             <select
               name="min_experience"
               value={formData.min_experience}
               onChange={handleChange}
+              required
             >
               <option value="" disabled>
                 Select Experience
@@ -220,24 +243,26 @@ const RecruiterDashBoard = () => {
               ))}
             </select>
 
-            <label>Job Description</label>
+            <label className="required">Job Description</label>
             <textarea
               name="job_description"
               value={formData.job_description}
               onChange={handleChange}
+              required
             />
 
             <button
+              type="submit"
               className="publish-btn"
-              onClick={handleSubmit}
               disabled={loading}
             >
-               Publish Job Posting
+              Publish Job Posting
             </button>
-          </div>
+          </form>
 
+          {/* JOB LIST */}
           <div className="jobs-section">
-            <h2>Your Posted Jobs</h2>
+            <h2 className="job-post-title">Your Posted Jobs</h2>
 
             {jobs.length === 0 ? (
               <p className="info-text">No jobs posted yet.</p>
@@ -252,7 +277,6 @@ const RecruiterDashBoard = () => {
                 />
               ))
             )}
-
           </div>
 
         </div>

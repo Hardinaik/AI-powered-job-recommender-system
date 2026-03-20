@@ -1,16 +1,38 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: "Inter",sans-serif;
-}
 
-.page-container{
-  background: #f8fafc;
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-light: #eff6ff;
+  --primary-glow: rgba(37, 99, 235, 0.12);
+  --surface: #ffffff;
+  --border: #e2e8f4;
+  --border-focus: #2563eb;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --danger: #ef4444;
+  --danger-light: #fef2f2;
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 16px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.04);
+  --shadow-blue: 0 4px 20px rgba(37, 99, 235, 0.18);
+  --radius: 14px;
+  --radius-sm: 8px;
+}
+ 
+* {
+  box-sizing: border-box;
+}
+ 
+/* ── Page shell ──────────────────────────────────────── */
+ 
+.page-container {
   height: 100vh;
   overflow: hidden;
+  font-family: 'Inter', sans-serif;
 }
-
+ 
+/* ── Top bar ─────────────────────────────────────────── */
+ 
 .top-bar {
   width: 100%;
   height: 60px;
@@ -18,174 +40,336 @@
   justify-content: flex-end;
   align-items: center;
   padding: 0 30px;
+  gap: 12px;
 }
-
+.profile-btn{
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+ 
+/* ── Main workspace ──────────────────────────────────── */
+ 
 .workspace-container {
-  padding: 10px 40px 40px 40px;
-  height: calc(100vh - 60px);
-  font-family: "Inter", sans-serif;
+  padding: 28px 40px 40px 40px;
+  height: calc(100vh - 62px);
 }
-
+ 
 .workspace-title {
-  font-size: 28px;
-  font-weight: 700;
-  margin: 0 0 20px 0;
-  color: #2563eb;
+  font-family: 'Inter', sans-serif;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  margin: 0 0 22px 0;
+  color: var(--primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
-
+ 
+.workspace-title::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 24px;
+  background: linear-gradient(180deg, #2563eb 0%, #60a5fa 100%);
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+ 
+/* ── Two-column grid ─────────────────────────────────── */
+ 
 .workspace-grid {
   display: grid;
-  grid-template-columns: 380px 1fr;
-  gap: 30px;
+  grid-template-columns: 370px 1fr;
+  gap: 24px;
   align-items: start;
-  height: calc(100vh - 140px);
+  height: calc(100vh - 148px);
 }
-
-/* Post Job Form */
-
+ 
+/* ── Post-job form card ──────────────────────────────── */
+ 
 .post-job-card {
-  background: white;
-  padding: 25px;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-
+  background: var(--surface);
+  padding: 26px 24px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
   max-height: 100%;
   overflow-y: auto;
+  position: relative;
 }
-
+ 
+.post-job-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+ 
 .post-job-card h2 {
-  font-size: 18px;
+  font-family: sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
   margin-bottom: 20px;
+  color: var(--text-primary);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
 }
-
+ 
+.icon-blue {
+  color: var(--primary);
+  font-size: 13px;
+}
+ 
+/* ── Form labels ─────────────────────────────────────── */
+ 
 .post-job-card label {
   display: block;
-  font-size: 14px;
-  margin-bottom: 6px;
-  margin-top: 12px;
-  font-weight: 500;
-  color: #374151;
+  font-size: 12.5px;
+  margin-bottom: 5px;
+  margin-top: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
 }
-
+ 
+/* ── Inputs, selects, textareas ──────────────────────── */
+ 
 .post-job-card input,
 .post-job-card textarea,
 .post-job-card select {
   width: 100%;
-  padding: 10px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  padding: 10px 13px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
   font-size: 14px;
+  font-family: sans-serif;
+  color: var(--text-primary);
+  background: #fafbff;
   outline: none;
-  transition: 0.2s ease;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
 }
-
+ 
+.post-job-card input::placeholder,
+.post-job-card textarea::placeholder {
+  color: var(--text-muted);
+}
+ 
 .post-job-card input:focus,
 .post-job-card textarea:focus,
 .post-job-card select:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+  border-color: var(--border-focus);
+  background: #fff;
+  box-shadow: 0 0 0 3px var(--primary-glow);
 }
-
+ 
+.post-job-card select {
+  cursor: pointer;
+  appearance: none;
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+}
+ 
 .post-job-card textarea {
-  height: 100px;
+  height: 108px;
   resize: none;
+  line-height: 1.6;
 }
-
+ 
+/* ── Publish button ──────────────────────────────────── */
+ 
 .publish-btn {
   margin-top: 20px;
   width: 100%;
   padding: 12px;
   border: none;
-  border-radius: 8px;
-  background: #2563eb;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
   color: white;
-  font-weight: 600;
+  font-family: 'Sora', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
   cursor: pointer;
-  transition: 0.2s ease;
+  box-shadow: var(--shadow-blue);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+ 
+.publish-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 28px rgba(37, 99, 235, 0.28);
+  filter: brightness(1.06);
+}
+ 
+.publish-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: var(--shadow-blue);
+}
+ 
+.publish-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
-.publish-btn:hover {
-  background: #1d4ed8;
-  transform: translateY(-1px);
+.required::after {
+  content: " *";
+  color: red;
 }
-
-/* Posted Jobs Section */
-
+ 
+/* ── Posted jobs section ─────────────────────────────── */
+ 
 .jobs-section {
   display: flex;
   flex-direction: column;
+  gap: 0;
   overflow-y: auto;
   height: 100%;
-  padding-right: 10px;
+  padding-right: 6px;
   scroll-behavior: smooth;
 }
-
-.info-text {
-  color: #6b7280;
-  font-size: 14px;
+ 
+.job-post-title {
+  font-family: sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+  margin: 0 0 16px 0;
+  padding-bottom: 20px;
+  top: 0;
+  background: var(--bg);
+  z-index: 10;
 }
-
-/* Scrollbars */
-
+ 
+.info-text {
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 40px 0;
+  text-align: center;
+}
+ 
+/* ── Scrollbars ──────────────────────────────────────── */
+ 
 .post-job-card::-webkit-scrollbar,
 .jobs-section::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
-
+ 
+.post-job-card::-webkit-scrollbar-track,
+.jobs-section::-webkit-scrollbar-track {
+  background: transparent;
+}
+ 
 .post-job-card::-webkit-scrollbar-thumb,
 .jobs-section::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: #cbd5e1;
   border-radius: 10px;
 }
-
+ 
 .post-job-card::-webkit-scrollbar-thumb:hover,
 .jobs-section::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: #94a3b8;
 }
-
+ 
+/* ── React-Select overrides ──────────────────────────── */
+ 
+.post-job-card .react-select__control {
+  border: 1.5px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: 14px !important;
+  font-family: 'DM Sans', sans-serif !important;
+  background: #fafbff !important;
+  box-shadow: none !important;
+  min-height: 40px;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+ 
+.post-job-card .react-select__control--is-focused {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px var(--primary-glow) !important;
+  background: #fff !important;
+}
+ 
+.post-job-card .react-select__multi-value {
+  background: var(--primary-light) !important;
+  border-radius: 5px !important;
+}
+ 
+.post-job-card .react-select__multi-value__label {
+  color: var(--primary) !important;
+  font-weight: 500 !important;
+  font-size: 12px !important;
+}
+ 
+.post-job-card .react-select__multi-value__remove:hover {
+  background: #dbeafe !important;
+  color: var(--primary-dark) !important;
+}
+ 
+.post-job-card .react-select__placeholder {
+  color: var(--text-muted) !important;
+  font-size: 14px !important;
+}
+ 
+/* ── Responsive ──────────────────────────────────────── */
+ 
 @media (max-width: 1024px) {
-
   .page-container {
     height: auto;
     overflow: visible;
   }
-
+ 
   .workspace-container {
     height: auto;
   }
-
+ 
   .workspace-grid {
     grid-template-columns: 1fr;
     height: auto;
   }
-
+ 
   .post-job-card {
     max-height: none;
     overflow: visible;
   }
-
+ 
+  .post-job-card::before {
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+ 
   .jobs-section {
     height: auto;
     overflow: visible;
   }
-
 }
-
+ 
 @media (max-width: 768px) {
-
   .workspace-container {
-    padding: 20px;
+    padding: 20px 18px;
   }
-
+ 
   .workspace-title {
     font-size: 22px;
   }
-
+ 
   .workspace-grid {
-    gap: 20px;
+    gap: 18px;
   }
-
+ 
+  .top-bar {
+    padding: 0 18px;
+  }
 }
+ 

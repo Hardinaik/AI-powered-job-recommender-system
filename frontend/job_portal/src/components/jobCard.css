@@ -2,6 +2,7 @@
   background: #ffffff;
   border-radius: 14px;
   padding: 18px;
+  padding-bottom: 50px; 
   border: 1px solid #e5e7eb;
   margin-bottom: 18px;
   position: relative;
@@ -105,6 +106,10 @@
 /* save button */
 
 .save-btn {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+
   background: white;
   border: 1px solid #e5e7eb;
   padding: 8px 10px;

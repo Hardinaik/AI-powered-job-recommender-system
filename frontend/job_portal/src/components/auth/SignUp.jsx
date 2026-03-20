@@ -2,16 +2,22 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
 import "./Auth.css";
+import Login from "./Login";
 
 function SignUp() {
   const navigate = useNavigate();
 
+  const [showLogin, setShowLogin] = useState(false);
   const [role, setRole] = useState("jobseeker");
   const [fullname, setFullname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  if (showLogin) {
+    return <Login />;
+  }
 
     const handleSignup = async () => {
     setError("");
@@ -120,6 +126,8 @@ function SignUp() {
 
         {error && <p className="error-text">{error}</p>}
 
+
+
         <button
           className="create-btn"
           onClick={handleSignup}
@@ -127,6 +135,13 @@ function SignUp() {
         >
           {loading ? "Creating..." : "Create Account"}
         </button>
+
+        <p className="signup-text">
+          Already have account?{" "}
+          <button onClick={() => setShowLogin(true)}>
+            Login
+          </button>
+        </p>
 
         
       </div>

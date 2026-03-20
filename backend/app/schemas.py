@@ -3,7 +3,7 @@ from pydantic import BaseModel, EmailStr,field_validator,Field
 from typing import Literal,List
 from uuid import UUID
 from datetime import datetime
-
+from pydantic_core import PydanticCustomError
 
 class SignupRequest(BaseModel):
     fullname: str
@@ -15,9 +15,9 @@ class SignupRequest(BaseModel):
         pattern = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$'
 
         if not re.match(pattern, value):
-            raise ValueError(
-                "Password must be at least 8 characters long and include "
-                "uppercase, lowercase, number, and special character."
+            raise PydanticCustomError(
+                "password_error",
+                "Password must be at least 8 characters long and include uppercase, lowercase, number, and special character."
             )
         return value
 

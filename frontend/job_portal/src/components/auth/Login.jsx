@@ -4,45 +4,51 @@ import api from "../../api/axios";
 import "./Auth.css";
 import SignUp from "./SignUp";
 
-function Login() {
-  const [showSignUp, setShowSignUp] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const navigate = useNavigate();
+  function Login() {
+    const [showSignUp, setShowSignUp] = useState(false);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const navigate = useNavigate();
 
-  // If user clicks signup
-  if (showSignUp) {
-    return <SignUp />;
-  }
+    // If user clicks signup
+    if (showSignUp) {
+      return <SignUp />;
+    }
 
-  const handleLogin = async () => {
-    try {
-      const response = await api.post("/auth/login", {
-        email,
-        password,
-      });
+    const handleLogin = async () => {
+      setError("");
 
-      const { access_token, role } = response.data;
-
-      // Store token & role in localStorage
-      localStorage.setItem("token", access_token);
-      localStorage.setItem("role", role);
-
-      
-      // Redirect based on role
-      if (role === "jobseeker") {
-        navigate("/joblist");
-      } else if (role === "recruiter") {
-        navigate("/recruiter-dashboard");
+      if (!email.trim() || !password.trim()) {
+        setError("Please enter both email and password.");
+        return;
       }
 
-    } catch (error) {
-      console.error(error);
-      alert(
-        error.response?.data?.detail || "Login failed. Please try again."
-      );
-    }
-  };
+      try {
+        const response = await api.post("/auth/login", {
+          email,
+          password,
+        });
+
+        const { access_token, role } = response.data;
+
+        localStorage.setItem("token", access_token);
+        localStorage.setItem("role", role);
+
+        alert("Login successful!"); // optional
+
+        if (role === "jobseeker") {
+          navigate("/joblist");
+        } else if (role === "recruiter") {
+          navigate("/recruiter-dashboard");
+        }
+
+      } catch (error) {
+        setError(
+          error.response?.data?.detail || "Login failed. Please try again."
+        );
+      }
+    };
 
   return (
     <div className="login-container">
@@ -68,6 +74,8 @@ function Login() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </div>
+
+        {error && <p className="error-text">{error}</p>}
 
         <div className="forgot-password">
           <a href="#">Forgot Password?</a>
