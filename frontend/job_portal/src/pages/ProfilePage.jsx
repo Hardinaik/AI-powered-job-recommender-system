@@ -4,7 +4,7 @@ import Select from "react-select";
 import "./ProfilePage.css";
 import Logout from "../components/auth/Logout";
 
-export default function JobSeekerProfile() {
+export default function Profile() {
   const role = "jobseeker"; 
 
   const navigate = useNavigate();
