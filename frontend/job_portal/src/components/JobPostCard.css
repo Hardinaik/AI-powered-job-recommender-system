@@ -1,110 +1,144 @@
-.job-card {
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 24px;
-  margin-bottom: 20px;
-  border: 1px solid #e5e7eb;
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+.jpc-card {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  padding: 22px 24px;
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
 }
 
-.job-card:hover {
-  transform: translateY(-4px);
-  border-color: #c7d2fe;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.08);
-  background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%);
+.jpc-card:hover {
+  box-shadow: var(--shadow-md);
 }
 
-.job-header {
+.jpc-card--active {
+  border-color: var(--accent-mid);
+}
+
+.jpc-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 16px;
 }
 
-.job-title {
+.jpc-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.jpc-title {
+  font-family: var(--font-heading);
   font-size: 15px;
-  font-weight: 600;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
   margin-bottom: 8px;
-  color: #111827;
-  transition: color 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.job-card:hover .job-title {
-  color: #2563eb;
-}
-
-.job-location {
-  font-size: 14px;
-  color: #6b7280;
+.jpc-tags {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
 }
 
-.location-icon {
-  color: #9ca3af;
-  font-size: 14px;
-}
-
-/* Location badges */
-
-.location-badges {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.location-badge {
-  background: #eef2ff;
-  color: #2f5bea;
+.jpc-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 20px;
   font-weight: 500;
+  padding: 3px 9px;
+  border-radius: 20px;
 }
 
-.job-actions {
+.jpc-badge--location {
+  background: var(--accent-light);
+  color: var(--accent);
+  border: 1px solid var(--accent-mid);
+}
+
+.jpc-badge--domain {
+  background: #f4f5fa;
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.jpc-badge--exp {
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.jpc-badge--muted {
+  background: #f4f5fa;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.jpc-actions {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
-.details-btn {
-  background-color: #2f5bea;
+.jpc-details-btn {
+  padding: 7px 14px;
+  background: var(--accent-light);
+  color: var(--accent);
+  border: 1.5px solid var(--accent-mid);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.jpc-details-btn:hover,
+.jpc-details-btn--active {
+  background: var(--accent);
   color: white;
-  padding: 8px 14px;
-  border-radius: 6px;
-  border: none;
+  border-color: var(--accent);
+}
+
+.jpc-delete-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
   cursor: pointer;
+  color: var(--text-muted);
   font-size: 13px;
-  transition: background 0.2s ease, transform 0.15s ease;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
 }
 
-.details-btn:hover {
-  background-color: #2448c7;
-  transform: translateY(-1px);
+.jpc-delete-btn:hover {
+  background: var(--danger-light);
+  border-color: var(--danger-border);
+  color: var(--danger);
 }
 
-.delete-icon {
-  cursor: pointer;
-  color: #9ca3af;
-  font-size: 16px;
-  transition: color 0.2s ease;
+.jpc-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 16px 0;
 }
 
-.delete-icon:hover {
-  color: #ef4444;
-}
-
-.divider {
-  margin: 18px 0;
-  border: none;
-  border-top: 1px solid #e5e7eb;
-}
-
-.job-description {
+.jpc-description {
+  font-size: 13.5px;
+  color: var(--text-secondary);
   line-height: 1.7;
-  font-size: 14.5px;
-  color: #374151;
   white-space: pre-line;
 }

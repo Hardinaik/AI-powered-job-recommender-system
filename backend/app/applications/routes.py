@@ -4,7 +4,7 @@ from app.database import get_db
 from app.utils import get_current_jobseeker
 from typing import List
 from uuid import UUID
-from app.schemas import SaveJobResponse, JobResponse
+from .schemas import SaveJobResponse, JobResponse
 from app.models import Job, SavedJob, Application
 from sqlalchemy.exc import IntegrityError
 

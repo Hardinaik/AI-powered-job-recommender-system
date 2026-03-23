@@ -6,8 +6,8 @@ from fastapi import APIRouter, Depends, Query, UploadFile, File, Form, HTTPExcep
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
 from app.database import get_db
-from app.models import Job, Location, User, Resume
-from app.schemas import RecJobResponse
+from app.models import Job, Location, Resume
+from .schemas import RecJobResponse
 from .utils import (
     validate_pdf_extension,
     validate_file_size,
@@ -45,15 +45,15 @@ async def get_recommended_jobs(
             with open(temp_path, "wb") as buffer:
                 shutil.copyfileobj(resume_file.file, buffer)
             
-            s_emb, w_emb, cleaned_text = create_resume_embedding(temp_path)
+            s_emb, w_emb = create_resume_embedding(temp_path)
             
             # Update or Create Resume entry
             existing = db.query(Resume).filter(Resume.user_id == target_user_id).first()
             if existing:
-                existing.resume_text, existing.skill_embedding, existing.resume_embedding = cleaned_text, s_emb, w_emb
+                existing.skill_embedding, existing.resume_embedding = s_emb, w_emb
                 existing.updated_at = func.now()
             else:
-                db.add(Resume(user_id=target_user_id, resume_text=cleaned_text, skill_embedding=s_emb, resume_embedding=w_emb))
+                db.add(Resume(user_id=target_user_id, skill_embedding=s_emb, resume_embedding=w_emb))
             
             db.commit()
             skills_vec, summary_vec = s_emb, w_emb

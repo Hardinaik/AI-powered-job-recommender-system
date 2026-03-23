@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException,status
 from sqlalchemy.orm import Session,joinedload
 from datetime import datetime, timezone
 
-from app.schemas import JobPostRequest, JobPostResponse,JobResponse,DeleteJobResponse
+from .schemas import JobPostRequest, JobPostResponse,JobResponse,DeleteJobResponse
 from app.database import get_db
 from app.models import Job, Location, IndustryDomain
 from .utils import create_job_embedding

@@ -100,11 +100,11 @@ def extract_json(filepath):
     
     # Corrected: Added return and structured the response
     extracted = chain.invoke({"resume": cleaned_text})
-    return extracted, cleaned_text
+    return extracted
 
 def create_resume_embedding(filepath):
     # Pass the filepath and unpack the returned tuple
-    document, resume_text = extract_json(filepath)
+    document= extract_json(filepath)
     
     # Use the globally loaded model
     resume_skills = document.get('skills', "")
@@ -119,4 +119,4 @@ def create_resume_embedding(filepath):
         resume_work_summary, convert_to_numpy=True, normalize_embeddings=True
     ).tolist()
 
-    return embedding_skills, embedding_work_summary, resume_text
+    return embedding_skills, embedding_work_summary

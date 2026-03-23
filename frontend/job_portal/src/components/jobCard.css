@@ -110,47 +110,73 @@
   bottom: 16px;
   right: 16px;
 
-  background: white;
-  border: 1px solid #e5e7eb;
-  padding: 8px 10px;
-  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  padding: 9px 11px;
+  border-radius: 12px;
+
   cursor: pointer;
-  font-size: 16px;
+  font-size: 17px;
   color: #6b7280;
+
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
+
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.06);
+
+  transition: all 0.2s ease;
 }
 
+/* hover (unsaved) */
 .save-btn:hover {
-  background: #f3f4f6;
+  background: #f9fafb;
   color: #2563eb;
-  border-color: #d1d5db; 
+  border-color: #93c5fd;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.15);
+  transform: translateY(-1px);
 }
 
-/* saved bookmark state */
+/* click feel */
+.save-btn:active {
+  transform: scale(0.95);
+}
 
+/* saved state */
 .save-btn.saved {
-  background: #eff6ff; 
+  background: #2563eb;
   border-color: #2563eb;
-  color: #2563eb;      
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 
+/* hover when saved */
 .save-btn.saved:hover {
-  background: #dbeafe; 
-  color: #1d4ed8;
+  background: #1d4ed8;
+  border-color: #1d4ed8;
 }
 
+/* disabled */
 .save-btn:disabled {
-  cursor: default; 
-  opacity: 0.9;
+  cursor: not-allowed;
+  opacity: 0.6;
+  box-shadow: none;
 }
 
+/* icon */
 .save-btn svg {
   display: block;
+  transition: transform 0.2s ease;
 }
 
+/* small icon animation */
+.save-btn:hover svg {
+  transform: scale(1.1);
+}
+
+.save-btn.saved svg {
+  transform: scale(1.05);
+}
 /* details button */
 
 .details-btn {
