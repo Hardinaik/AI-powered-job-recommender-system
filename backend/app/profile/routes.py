@@ -6,6 +6,7 @@ from .schemas import UserProfileResponse,PersonalInfoUpdate,CompanyInfoUpdate,Jo
 from .utils import get_current_user_obj
 from app.utils import verify_password,hash_password
 
+
 router=APIRouter(prefix="/profile",tags=["Profile"])
 
 

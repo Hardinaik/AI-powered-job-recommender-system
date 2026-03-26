@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr,field_validator,model_validator,HttpUrl
 from typing import Optional, List
 from pydantic_core import PydanticCustomError
 
+
 # For Dropdown consistency (ID + Name)
 class IdNamePair(BaseModel):
     id: int

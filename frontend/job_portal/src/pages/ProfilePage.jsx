@@ -34,7 +34,6 @@ export default function Profile() {
     preferred_domain_id: null,
     experience: "",
   });
-  // Snapshot of last successfully saved preferences — used by cancel
   const [savedPrefForm, setSavedPrefForm] = useState({
     location_ids: [],
     preferred_domain_id: null,
@@ -51,7 +50,6 @@ export default function Profile() {
     website: "",
     description: "",
   });
-  // Snapshot of last successfully saved company info — used by cancel
   const [savedCompanyForm, setSavedCompanyForm] = useState({
     company_name: "",
     website: "",
@@ -71,6 +69,16 @@ export default function Profile() {
   const [securitySaving, setSecuritySaving] = useState(false);
   const [securityError, setSecurityError] = useState("");
   const [securitySuccess, setSecuritySuccess] = useState(false);
+
+  // ── Resume ─────────────────────────────────────────────────────
+  const [hasResume, setHasResume] = useState(false);
+  const [resumeUploading, setResumeUploading] = useState(false);
+  const [resumeProcessing, setResumeProcessing] = useState(false);
+  const [resumeDeleting, setResumeDeleting] = useState(false);
+  const [resumeViewing, setResumeViewing] = useState(false);
+  const [resumeError, setResumeError] = useState("");
+  const [resumeSuccess, setResumeSuccess] = useState("");
+  const fileInputRef = useRef(null);
 
   // ── Scroll helpers ─────────────────────────────────────────────
   const scrollToSection = (ref) => ref.current?.scrollIntoView({ behavior: "smooth" });
@@ -105,8 +113,15 @@ export default function Profile() {
             experience: js.experience ?? "",
           };
           setPrefForm(initial);
-          // Spread + clone array so savedPrefForm is fully independent
           setSavedPrefForm({ ...initial, location_ids: [...initial.location_ids] });
+
+          // ── Fetch resume status only for jobseekers ──
+          try {
+            const resumeRes = await api.get("/resume/status");
+            setHasResume(resumeRes.data.has_resume);
+          } catch {
+            setHasResume(false);
+          }
         }
 
         if (data.user_role === "recruiter" && data.recruiter_details) {
@@ -117,7 +132,6 @@ export default function Profile() {
             description: rc.description ?? "",
           };
           setCompanyForm(initial);
-          // Spread so savedCompanyForm is fully independent
           setSavedCompanyForm({ ...initial });
         }
       } catch (err) {
@@ -130,8 +144,6 @@ export default function Profile() {
   }, []);
 
   // ── Save Personal ──────────────────────────────────────────────
-  // Personal cancel works correctly already because `profile` state
-  // is only updated on successful save, and cancel restores from it.
   const savePersonal = async () => {
     setPersonalSaving(true);
     setPersonalError("");
@@ -141,7 +153,6 @@ export default function Profile() {
         fullname: personalForm.fullname,
         phone: phoneVal,
       });
-      // Update `profile` only on success — this is the source of truth for cancel
       setProfile((prev) => ({
         ...prev,
         name: personalForm.fullname,
@@ -163,7 +174,6 @@ export default function Profile() {
   };
 
   const cancelPersonal = () => {
-    // Restore from `profile` which only reflects successfully saved data
     setPersonalForm({ fullname: profile.name, phone: profile.phone });
     setPersonalError("");
     setPersonalEdit(false);
@@ -179,7 +189,6 @@ export default function Profile() {
         preferred_domain_id: prefForm.preferred_domain_id,
         experience: prefForm.experience !== "" ? Number(prefForm.experience) : null,
       });
-      // Spread into a new object + clone array so snapshot is fully independent
       setSavedPrefForm({ ...prefForm, location_ids: [...prefForm.location_ids] });
       setPrefEdit(false);
       setPrefSuccess(true);
@@ -197,7 +206,6 @@ export default function Profile() {
   };
 
   const cancelPreferences = () => {
-    // Restore from savedPrefForm — last successfully saved state
     setPrefForm(savedPrefForm);
     setPrefError("");
     setPrefEdit(false);
@@ -212,7 +220,6 @@ export default function Profile() {
         ...companyForm,
         website: companyForm.website?.trim() || null,
       });
-      // Spread into a new object so snapshot is fully independent
       setSavedCompanyForm({ ...companyForm });
       setCompanyEdit(false);
       setCompanySuccess(true);
@@ -221,7 +228,7 @@ export default function Profile() {
       const d3 = err.response?.data?.detail;
       setCompanyError(
         Array.isArray(d3)
-          ? d3.map((e) => e.msg.replace("Value error, ", "")).join(" • ")
+          ? d3.map((e) => e.msg.replace("Value error, ", "")).join(" . ")
           : (d3 ?? "Failed to update company info.")
       );
     } finally {
@@ -230,7 +237,6 @@ export default function Profile() {
   };
 
   const cancelCompany = () => {
-    // Restore from savedCompanyForm — last successfully saved state
     setCompanyForm(savedCompanyForm);
     setCompanyError("");
     setCompanyEdit(false);
@@ -258,16 +264,13 @@ export default function Profile() {
       await api.patch("/profile/change-password", {
         current_pass: securityForm.currentPassword,
         new_pass: securityForm.newPassword,
-        confirm_pass: securityForm.confirmPassword, // required by backend model validator
+        confirm_pass: securityForm.confirmPassword,
       });
-
-      // Always clear password fields after save — never persist them in state
       setSecurityForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
       setSecurityEdit(false);
       setSecuritySuccess(true);
       setTimeout(() => setSecuritySuccess(false), 3000);
     } catch (err) {
-      // FIX: handle both array (Pydantic 422) and string error details
       const detail = err.response?.data?.detail;
       setSecurityError(
         Array.isArray(detail)
@@ -279,12 +282,93 @@ export default function Profile() {
     }
   };
 
-  // FIX: cancelSecurity was missing — referenced in JSX but never defined
   const cancelSecurity = () => {
-    // Password fields are always cleared on cancel — correct behavior
     setSecurityForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
     setSecurityError("");
     setSecurityEdit(false);
+  };
+
+  // ── Resume Handlers ────────────────────────────────────────────
+  const handleResumeUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith(".pdf")) {
+      setResumeError("Only PDF files are allowed.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setResumeError("File size must be under 5MB.");
+      return;
+    }
+
+    setResumeUploading(true);
+    setResumeProcessing(false);
+    setResumeError("");
+    setResumeSuccess("");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    // After 800ms assume file is saved, now embedding pipeline is running
+    const processingTimer = setTimeout(() => setResumeProcessing(true), 800);
+
+    try {
+      await api.post("/resume/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+      setHasResume(true);
+      setResumeSuccess("Resume uploaded successfully.");
+      setTimeout(() => setResumeSuccess(""), 3000);
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      setResumeError(
+        Array.isArray(detail)
+          ? detail.map((e) => e.msg.replace("Value error, ", "")).join(" • ")
+          : (detail ?? "Upload failed. Please try again.")
+      );
+    } finally {
+      clearTimeout(processingTimer);
+      setResumeUploading(false);
+      setResumeProcessing(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  };
+
+  const handleResumeDelete = async () => {
+    if (!window.confirm("Delete your resume? This cannot be undone.")) return;
+
+    setResumeDeleting(true);
+    setResumeError("");
+    setResumeSuccess("");
+
+    try {
+      await api.delete("/resume/delete");
+      setHasResume(false);
+      setResumeSuccess("Resume deleted.");
+      setTimeout(() => setResumeSuccess(""), 3000);
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      setResumeError(detail ?? "Delete failed. Please try again.");
+    } finally {
+      setResumeDeleting(false);
+    }
+  };
+
+  const handleResumeView = async () => {
+    setResumeViewing(true);
+    setResumeError("");
+    try {
+      // Fetch as blob — keeps auth header, avoids window.open auth bypass
+      const res = await api.get("/resume/view", { responseType: "blob" });
+      const blobUrl = URL.createObjectURL(res.data);
+      window.open(blobUrl, "_blank");
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    } catch (err) {
+      setResumeError("Could not load resume. Please try again.");
+    } finally {
+      setResumeViewing(false);
+    }
   };
 
   // ── Derived Select values ──────────────────────────────────────
@@ -307,7 +391,7 @@ export default function Profile() {
           className="dashboard-btn"
           onClick={() => navigate(role === "jobseeker" ? "/joblist" : "/recruiter-dashboard")}
         >
-          {role === "jobseeker" ? "← Jobs" : "← Dashboard"}
+          {role === "jobseeker" ? "Jobs" : "Dashboard"}
         </button>
         <Logout />
       </div>
@@ -439,7 +523,7 @@ export default function Profile() {
             )}
 
             {personalSuccess && (
-              <p className="msg msg--success"> Personal info updated successfully</p>
+              <p className="msg msg--success">Personal info updated successfully</p>
             )}
           </div>
 
@@ -536,14 +620,80 @@ export default function Profile() {
               )}
 
               {prefSuccess && (
-                <p className="msg msg--success"> Preferences updated successfully</p>
+                <p className="msg msg--success">Preferences updated successfully</p>
               )}
 
-              {/* Resume upload */}
+              {/* ── Resume Section ── */}
+              <div className="card-divider" style={{ marginTop: "24px" }} />
+
               <div className="upload-zone">
-                <p className="upload-title">Upload Resume</p>
-                <p className="upload-desc">PDF format, max 5MB</p>
-                <button className="btn-upload">Browse Files</button>
+                <div className="upload-zone-header">
+                  <p className="upload-title">Resume</p>
+                  {hasResume && (
+                    <span className="resume-badge">Uploaded</span>
+                  )}
+                </div>
+
+                {hasResume ? (
+                  <div className="resume-existing">
+                    <div className="resume-file-row">
+                      <span className="resume-filename">📄 resume.pdf</span>
+                    </div>
+                    <div className="resume-actions">
+                      <button
+                        className="btn-upload"
+                        onClick={handleResumeView}
+                        disabled={resumeViewing || resumeUploading || resumeDeleting}
+                      >
+                        {resumeViewing ? "Opening…" : "View"}
+                      </button>
+                      <button
+                        className="btn-upload"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={resumeViewing || resumeUploading || resumeDeleting}
+                      >
+                        {resumeUploading
+                          ? resumeProcessing
+                            ? "Processing…"
+                            : "Uploading…"
+                          : "Replace"}
+                      </button>
+                      <button
+                        className="btn-cancel"
+                        onClick={handleResumeDelete}
+                        disabled={resumeViewing || resumeUploading || resumeDeleting}
+                      >
+                        {resumeDeleting ? "Deleting…" : "Delete"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="upload-desc">PDF format, max 5MB</p>
+                    <button
+                      className="btn-upload"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={resumeUploading}
+                    >
+                      {resumeUploading
+                        ? resumeProcessing
+                          ? "Processing…"
+                          : "Uploading…"
+                        : "Browse Files"}
+                    </button>
+                  </>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf"
+                  style={{ display: "none" }}
+                  onChange={handleResumeUpload}
+                />
+
+                {resumeError   && <p className="msg msg--error">{resumeError}</p>}
+                {resumeSuccess && <p className="msg msg--success">{resumeSuccess}</p>}
               </div>
             </div>
           )}
@@ -571,7 +721,6 @@ export default function Profile() {
                 <div className="info-grid">
                   <div className="info-field">
                     <span className="field-label">Company Name</span>
-                    {/* Always display from savedCompanyForm to show DB truth */}
                     <span className="field-value">{savedCompanyForm.company_name || "—"}</span>
                   </div>
                   <div className="info-field">
@@ -625,7 +774,7 @@ export default function Profile() {
                     />
                   </div>
 
-                  {companyError && <p className="msg msg--error">⚠ {companyError}</p>}
+                  {companyError && <p className="msg msg--error">{companyError}</p>}
 
                   <div className="action-bar">
                     <button className="btn-save" onClick={saveCompany} disabled={companySaving}>
@@ -639,7 +788,7 @@ export default function Profile() {
               )}
 
               {companySuccess && (
-                <p className="msg msg--success"> Company info updated successfully</p>
+                <p className="msg msg--success">Company info updated successfully</p>
               )}
             </div>
           )}
@@ -697,7 +846,6 @@ export default function Profile() {
                         setSecurityForm({ ...securityForm, newPassword: e.target.value })
                       }
                     />
-                    {/* FIX: updated hint to match actual backend password requirements */}
                     <span className="field-hint">
                       Min 8 chars with uppercase, lowercase, number & special character (@$!%*?&)
                     </span>
@@ -716,7 +864,7 @@ export default function Profile() {
                   </div>
                 </div>
 
-                {securityError && <p className="msg msg--error"> {securityError}</p>}
+                {securityError && <p className="msg msg--error">{securityError}</p>}
 
                 <div className="action-bar">
                   <button className="btn-save" onClick={saveSecurity} disabled={securitySaving}>
@@ -730,7 +878,7 @@ export default function Profile() {
             )}
 
             {securitySuccess && (
-              <p className="msg msg--success"> Password updated successfully</p>
+              <p className="msg msg--success">Password updated successfully</p>
             )}
           </div>
 

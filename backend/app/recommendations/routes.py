@@ -8,7 +8,7 @@ from sqlalchemy import func
 from app.database import get_db
 from app.models import Job, Location, Resume
 from .schemas import RecJobResponse
-from .utils import (
+from app.resume.utils import (
     validate_pdf_extension,
     validate_file_size,
     create_resume_embedding
