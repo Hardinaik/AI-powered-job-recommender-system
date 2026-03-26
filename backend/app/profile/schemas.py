@@ -1,6 +1,7 @@
 import re
-from pydantic import BaseModel, EmailStr,field_validator,HttpUrl
+from pydantic import BaseModel, EmailStr,field_validator,model_validator,HttpUrl
 from typing import Optional, List
+from pydantic_core import PydanticCustomError
 
 # For Dropdown consistency (ID + Name)
 class IdNamePair(BaseModel):
@@ -69,7 +70,45 @@ class JobSeekerPrefUpdate(BaseModel):
 
 
 
+
 class CompanyInfoUpdate(BaseModel):
     company_name: Optional[str] = None
-    website: Optional[HttpUrl] = None 
+    website: Optional[str] = None
     description: Optional[str] = None
+
+    @field_validator("website")
+    @classmethod
+    def validate_website(cls, v: Optional[str]):
+        if v is None:
+            return v
+        # Use HttpUrl just for validation, return plain string
+        HttpUrl(v)
+        return str(v)
+
+
+class PasswordChange(BaseModel):
+    current_pass: str
+    new_pass: str
+    confirm_pass: str
+
+    @field_validator("new_pass")
+    @classmethod
+    def validate_new_password(cls, value):
+        pattern = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$'
+
+        if not re.match(pattern, value):
+            raise PydanticCustomError(
+                "password_error",
+                "Password must be at least 8 characters long and include uppercase, lowercase, number, and special character."
+            )
+        return value
+
+    @model_validator(mode="after")
+    def check_passwords_match(self):
+        if self.new_pass != self.confirm_pass:
+            raise ValueError("Confirm password must match new password")
+
+        if self.current_pass == self.new_pass:
+            raise ValueError("New password cannot be same as current password")
+
+        return self

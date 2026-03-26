@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException,status
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models import User, JobSeekerProfile,RecruiterProfile,Location
-from .schemas import UserProfileResponse,PersonalInfoUpdate,CompanyInfoUpdate,JobSeekerPrefUpdate
+from .schemas import UserProfileResponse,PersonalInfoUpdate,CompanyInfoUpdate,JobSeekerPrefUpdate,PasswordChange
 from .utils import get_current_user_obj
+from app.utils import verify_password,hash_password
 
 router=APIRouter(prefix="/profile",tags=["Profile"])
 
@@ -175,3 +176,24 @@ def update_company_details(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail="An error occurred while updating company details.")
+    
+
+@router.patch("/change-password")
+def change_password(
+    payload: PasswordChange,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_obj)  # already a User object
+):
+    # 1. Verify current password
+    if not verify_password(payload.current_pass, current_user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+
+    # 2. Hash and save new password
+    current_user.password_hash = hash_password(payload.new_pass)
+    db.commit()
+    db.refresh(current_user)
+
+    return {"message": "Password updated successfully"}

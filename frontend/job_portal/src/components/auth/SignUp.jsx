@@ -3,10 +3,10 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api/axios";
 import "./Auth.css";
 import Login from "./Login";
-
+ 
 function SignUp() {
   const navigate = useNavigate();
-
+ 
   const [showLogin, setShowLogin] = useState(false);
   const [role, setRole] = useState("jobseeker");
   const [fullname, setFullname] = useState("");
@@ -14,71 +14,65 @@ function SignUp() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
+ 
   if (showLogin) {
     return <Login />;
   }
-
-    const handleSignup = async () => {
+ 
+  const handleSignup = async () => {
     setError("");
-
+ 
     if (!fullname || !email || !password) {
-      setError("All fields are required");
+      setError("All fields are required.");
       return;
     }
-
+ 
     if (password.length < 8) {
-      setError("Password must be at least 8 characters long");
+      setError("Password must be at least 8 characters long.");
       return;
     }
-
+ 
     try {
       setLoading(true);
-
+ 
       const response = await api.post("/auth/signup", {
         fullname,
         email,
         password,
         user_role: role,
       });
-
-      // ✅ Save token & role
+ 
       localStorage.setItem("token", response.data.access_token);
       localStorage.setItem("role", response.data.role);
-
-      // ✅ Redirect based on role
-      if (response.data.role === "recruiter") {
-        navigate("/recruiter-dashboard");
-      } else {
-        navigate("/joblist");
-      }
-
+ 
+      if (response.data.role === "recruiter") navigate("/recruiter-dashboard");
+      else navigate("/joblist");
     } catch (err) {
-        
-        if (err.response?.data?.detail) {
-
-          const detail = err.response.data.detail;
-
-          if (Array.isArray(detail)) {
-            setError(detail[0].msg); 
-          } else {
-            setError(detail); 
-          }
-
-        } else {
-          setError("Signup failed. Please try again.");
-        }
-
+      const detail = err.response?.data?.detail;
+      if (Array.isArray(detail)) setError(detail[0].msg);
+      else setError(detail || "Signup failed. Please try again.");
     } finally {
       setLoading(false);
     }
   };
-
+ 
+  const handleKeyDown = (e) => { if (e.key === "Enter") handleSignup(); };
+ 
   return (
     <div className="login-container">
       <div className="login-card">
-        <h2 className="login-title">Sign Up</h2>
-
+ 
+        {/* Brand */}
+        <div className="auth-brand">
+          <span className="auth-brand-dot" />
+          <span className="auth-brand-name">JobConnect</span>
+        </div>
+ 
+        <h2 className="login-title">Create an account</h2>
+        <p className="login-subtitle">Join as a job seeker or recruiter</p>
+ 
+        <div className="auth-divider" />
+ 
         <div className="role-toggle">
           <button
             className={role === "jobseeker" ? "active" : ""}
@@ -93,17 +87,18 @@ function SignUp() {
             Recruiter
           </button>
         </div>
-
+ 
         <div className="form-group">
           <label>{role === "recruiter" ? "Company Name" : "Full Name"}</label>
           <input
             type="text"
-            placeholder="Enter name"
+            placeholder={role === "recruiter" ? "e.g. Acme Corp" : "e.g. Alex Johnson"}
             value={fullname}
             onChange={(e) => setFullname(e.target.value)}
+            onKeyDown={handleKeyDown}
           />
         </div>
-
+ 
         <div className="form-group">
           <label>Email Address</label>
           <input
@@ -111,9 +106,10 @@ function SignUp() {
             placeholder="name@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            onKeyDown={handleKeyDown}
           />
         </div>
-
+ 
         <div className="form-group">
           <label>Password</label>
           <input
@@ -121,32 +117,24 @@ function SignUp() {
             placeholder="Min. 8 characters"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={handleKeyDown}
           />
         </div>
-
-        {error && <p className="error-text">{error}</p>}
-
-
-
-        <button
-          className="create-btn"
-          onClick={handleSignup}
-          disabled={loading}
-        >
-          {loading ? "Creating..." : "Create Account"}
+ 
+        {error && <p className="error-text">⚠ {error}</p>}
+ 
+        <button className="create-btn" onClick={handleSignup} disabled={loading}>
+          {loading ? "Creating account…" : "Create Account"}
         </button>
-
+ 
         <p className="signup-text">
-          Already have account?{" "}
-          <button onClick={() => setShowLogin(true)}>
-            Login
-          </button>
+          Already have an account?{" "}
+          <button onClick={() => setShowLogin(true)}>Sign in</button>
         </p>
-
-        
+ 
       </div>
     </div>
   );
 }
-
+ 
 export default SignUp;

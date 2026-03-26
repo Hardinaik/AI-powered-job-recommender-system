@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import HomePage from "./pages/HomePage";
 import JobListPage from "./pages/JobListPage";
-import RecruiterDashboard from "./pages/RecruiterDashBoard";
+import RecruiterDashBoard from "./pages/RecruiterDashBoard";
 import Profile from "./pages/ProfilePage";
 
 
@@ -28,7 +28,7 @@ function App() {
         />
         <Route 
           path="/recruiter-dashboard" 
-          element={<ProtectedRoute><RecruiterDashboard /></ProtectedRoute>} 
+          element={<ProtectedRoute><RecruiterDashBoard /></ProtectedRoute>} 
         />
         <Route 
           path="/profile" 

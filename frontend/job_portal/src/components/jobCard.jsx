@@ -2,21 +2,15 @@ import { useState, useEffect } from "react";
 import { FaBookmark } from "react-icons/fa";
 import api from "../api/axios";
 import "./jobCard.css";
-
+ 
 function JobCard({ job, isSaved, isApplied, onStatusChange }) {
   const [showDetails, setShowDetails] = useState(false);
   const [saved, setSaved] = useState(isSaved);
   const [applied, setApplied] = useState(isApplied);
-
-  // Synchronize local state with parent props
-  useEffect(() => {
-    setSaved(isSaved);
-  }, [isSaved]);
-
-  useEffect(() => {
-    setApplied(isApplied);
-  }, [isApplied]);
-
+ 
+  useEffect(() => { setSaved(isSaved); }, [isSaved]);
+  useEffect(() => { setApplied(isApplied); }, [isApplied]);
+ 
   const handleSaveJob = async () => {
     if (saved) return;
     try {
@@ -32,7 +26,7 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
       }
     }
   };
-
+ 
   const handleApplyJob = async () => {
     if (applied) return;
     try {
@@ -48,56 +42,63 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
       }
     }
   };
-
+ 
   return (
     <div className="job-card">
+ 
+      {/* Match Badge */}
       {job.match_score > 0 && (
-        <div className="match-badge">
-          {Math.round(job.match_score)}% Match
-        </div>
+        <div className="match-badge">{Math.round(job.match_score)}% Match</div>
       )}
-
+ 
+      {/* Header */}
       <div className="job-card-header">
         <div className="job-title">
-          <div>
-            <h3>{job.job_title}</h3>
-            <p className="company">
-              {job.company_name} • {job.locations?.join(", ")} • {job.min_experience} yrs exp
-            </p>
-          </div>
+          <h3>{job.job_title}</h3>
+          <p className="company">
+            {job.company_name}
+            {job.locations?.length > 0 && <> &bull; {job.locations.join(", ")}</>}
+            {job.min_experience != null && <> &bull; {job.min_experience} yr{job.min_experience !== 1 ? "s" : ""} exp</>}
+          </p>
         </div>
       </div>
-
+ 
+      <div className="job-card-divider" />
+ 
+      {/* Description */}
       <div className="job-description">
         <div className="jd-header">
-          <strong>JOB DESCRIPTION</strong>
+          <span className="jd-label">Job Description</span>
           <button className="details-btn" onClick={() => setShowDetails(!showDetails)}>
             {showDetails ? "Hide Details" : "View Details"}
           </button>
         </div>
         <p className={showDetails ? "" : "jd-preview"}>{job.job_description}</p>
       </div>
-
+ 
+      {/* Footer */}
       <div className="job-card-footer">
         <button
           className={`apply-btn ${applied ? "applied" : ""}`}
           onClick={handleApplyJob}
           disabled={applied}
         >
-          {applied ? "Applied" : "Apply Now"}
+          {applied ? "✓ Applied" : "Apply Now"}
         </button>
-
+ 
         <button
           className={`save-btn ${saved ? "saved" : ""}`}
           onClick={handleSaveJob}
           disabled={saved}
-          aria-label="Save Job"
+          aria-label={saved ? "Job saved" : "Save job"}
+          title={saved ? "Saved" : "Save job"}
         >
           <FaBookmark />
         </button>
       </div>
+ 
     </div>
   );
 }
-
+ 
 export default JobCard;

@@ -35,7 +35,7 @@ def create_access_token(data: dict):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-# ✅ Get current user from token
+#  Get current user from token
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ):

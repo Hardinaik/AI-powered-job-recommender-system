@@ -3,20 +3,20 @@ import { useNavigate } from "react-router-dom";
 import Select from "react-select";
 import "./ProfilePage.css";
 import Logout from "../components/auth/Logout";
-import Loader from "../components/loader"
+import Loader from "../components/loader";
 import api from "../api/axios";
- 
+
 export default function Profile() {
   const navigate = useNavigate();
- 
+
   const personalRef = useRef(null);
   const prefRef = useRef(null);
   const securityRef = useRef(null);
- 
+
   const [active, setActive] = useState("personal");
   const [role, setRole] = useState("jobseeker");
   const [loading, setLoading] = useState(true);
- 
+
   // ── Personal Info ──────────────────────────────────────────────
   const [profile, setProfile] = useState({ name: "", email: "", phone: "" });
   const [personalEdit, setPersonalEdit] = useState(false);
@@ -24,7 +24,7 @@ export default function Profile() {
   const [personalSaving, setPersonalSaving] = useState(false);
   const [personalError, setPersonalError] = useState("");
   const [personalSuccess, setPersonalSuccess] = useState(false);
- 
+
   // ── Job Preferences ────────────────────────────────────────────
   const [locationOptions, setLocationOptions] = useState([]);
   const [domainOptions, setDomainOptions] = useState([]);
@@ -34,10 +34,16 @@ export default function Profile() {
     preferred_domain_id: null,
     experience: "",
   });
+  // Snapshot of last successfully saved preferences — used by cancel
+  const [savedPrefForm, setSavedPrefForm] = useState({
+    location_ids: [],
+    preferred_domain_id: null,
+    experience: "",
+  });
   const [prefSaving, setPrefSaving] = useState(false);
   const [prefError, setPrefError] = useState("");
   const [prefSuccess, setPrefSuccess] = useState(false);
- 
+
   // ── Company Info ───────────────────────────────────────────────
   const [companyEdit, setCompanyEdit] = useState(false);
   const [companyForm, setCompanyForm] = useState({
@@ -45,10 +51,16 @@ export default function Profile() {
     website: "",
     description: "",
   });
+  // Snapshot of last successfully saved company info — used by cancel
+  const [savedCompanyForm, setSavedCompanyForm] = useState({
+    company_name: "",
+    website: "",
+    description: "",
+  });
   const [companySaving, setCompanySaving] = useState(false);
   const [companyError, setCompanyError] = useState("");
   const [companySuccess, setCompanySuccess] = useState(false);
- 
+
   // ── Security ───────────────────────────────────────────────────
   const [securityEdit, setSecurityEdit] = useState(false);
   const [securityForm, setSecurityForm] = useState({
@@ -59,14 +71,14 @@ export default function Profile() {
   const [securitySaving, setSecuritySaving] = useState(false);
   const [securityError, setSecurityError] = useState("");
   const [securitySuccess, setSecuritySuccess] = useState(false);
- 
+
   // ── Scroll helpers ─────────────────────────────────────────────
   const scrollToSection = (ref) => ref.current?.scrollIntoView({ behavior: "smooth" });
   const handleScroll = (section, ref) => {
     setActive(section);
     scrollToSection(ref);
   };
- 
+
   // ── Fetch all data on mount ────────────────────────────────────
   useEffect(() => {
     const fetchAll = async () => {
@@ -76,31 +88,37 @@ export default function Profile() {
           api.get("/jobs/locations"),
           api.get("/jobs/industry-domains"),
         ]);
- 
+
         const data = profileRes.data;
         setRole(data.user_role);
         setProfile({ name: data.fullname, email: data.email, phone: data.phone ?? "" });
         setPersonalForm({ fullname: data.fullname, phone: data.phone ?? "" });
- 
+
         setLocationOptions(locRes.data.map((l) => ({ value: l.id, label: l.name })));
         setDomainOptions(domainRes.data.map((d) => ({ value: d.id, label: d.name })));
- 
+
         if (data.user_role === "jobseeker" && data.jobseeker_details) {
           const js = data.jobseeker_details;
-          setPrefForm({
+          const initial = {
             location_ids: js.preferred_locations?.map((l) => l.id) ?? [],
             preferred_domain_id: js.preferred_domain?.id ?? null,
             experience: js.experience ?? "",
-          });
+          };
+          setPrefForm(initial);
+          // Spread + clone array so savedPrefForm is fully independent
+          setSavedPrefForm({ ...initial, location_ids: [...initial.location_ids] });
         }
- 
+
         if (data.user_role === "recruiter" && data.recruiter_details) {
           const rc = data.recruiter_details;
-          setCompanyForm({
+          const initial = {
             company_name: rc.company_name ?? "",
             website: rc.website ?? "",
             description: rc.description ?? "",
-          });
+          };
+          setCompanyForm(initial);
+          // Spread so savedCompanyForm is fully independent
+          setSavedCompanyForm({ ...initial });
         }
       } catch (err) {
         console.error("Failed to load profile:", err);
@@ -110,18 +128,20 @@ export default function Profile() {
     };
     fetchAll();
   }, []);
- 
+
   // ── Save Personal ──────────────────────────────────────────────
+  // Personal cancel works correctly already because `profile` state
+  // is only updated on successful save, and cancel restores from it.
   const savePersonal = async () => {
     setPersonalSaving(true);
     setPersonalError("");
-    // Normalise: send null instead of "" so the E.164 validator doesn't fire
     const phoneVal = personalForm.phone?.trim() || null;
     try {
       await api.patch("/profile/personal", {
         fullname: personalForm.fullname,
         phone: phoneVal,
       });
+      // Update `profile` only on success — this is the source of truth for cancel
       setProfile((prev) => ({
         ...prev,
         name: personalForm.fullname,
@@ -132,18 +152,23 @@ export default function Profile() {
       setTimeout(() => setPersonalSuccess(false), 3000);
     } catch (err) {
       const d1 = err.response?.data?.detail;
-      setPersonalError(Array.isArray(d1) ? d1.map((e) => e.msg.replace("Value error, ", "")).join(" • ") : (d1 ?? "Failed to update personal info."));
+      setPersonalError(
+        Array.isArray(d1)
+          ? d1.map((e) => e.msg.replace("Value error, ", "")).join(" • ")
+          : (d1 ?? "Failed to update personal info.")
+      );
     } finally {
       setPersonalSaving(false);
     }
   };
- 
+
   const cancelPersonal = () => {
+    // Restore from `profile` which only reflects successfully saved data
     setPersonalForm({ fullname: profile.name, phone: profile.phone });
     setPersonalError("");
     setPersonalEdit(false);
   };
- 
+
   // ── Save Preferences ───────────────────────────────────────────
   const savePreferences = async () => {
     setPrefSaving(true);
@@ -154,22 +179,30 @@ export default function Profile() {
         preferred_domain_id: prefForm.preferred_domain_id,
         experience: prefForm.experience !== "" ? Number(prefForm.experience) : null,
       });
+      // Spread into a new object + clone array so snapshot is fully independent
+      setSavedPrefForm({ ...prefForm, location_ids: [...prefForm.location_ids] });
       setPrefEdit(false);
       setPrefSuccess(true);
       setTimeout(() => setPrefSuccess(false), 3000);
     } catch (err) {
       const d2 = err.response?.data?.detail;
-      setPrefError(Array.isArray(d2) ? d2.map((e) => e.msg.replace("Value error, ", "")).join(" • ") : (d2 ?? "Failed to update preferences."));
+      setPrefError(
+        Array.isArray(d2)
+          ? d2.map((e) => e.msg.replace("Value error, ", "")).join(" • ")
+          : (d2 ?? "Failed to update preferences.")
+      );
     } finally {
       setPrefSaving(false);
     }
   };
- 
+
   const cancelPreferences = () => {
+    // Restore from savedPrefForm — last successfully saved state
+    setPrefForm(savedPrefForm);
     setPrefError("");
     setPrefEdit(false);
   };
- 
+
   // ── Save Company ───────────────────────────────────────────────
   const saveCompany = async () => {
     setCompanySaving(true);
@@ -179,25 +212,34 @@ export default function Profile() {
         ...companyForm,
         website: companyForm.website?.trim() || null,
       });
+      // Spread into a new object so snapshot is fully independent
+      setSavedCompanyForm({ ...companyForm });
       setCompanyEdit(false);
       setCompanySuccess(true);
       setTimeout(() => setCompanySuccess(false), 3000);
     } catch (err) {
       const d3 = err.response?.data?.detail;
-      setCompanyError(Array.isArray(d3) ? d3.map((e) => e.msg.replace("Value error, ", "")).join(" • ") : (d3 ?? "Failed to update company info."));
+      setCompanyError(
+        Array.isArray(d3)
+          ? d3.map((e) => e.msg.replace("Value error, ", "")).join(" • ")
+          : (d3 ?? "Failed to update company info.")
+      );
     } finally {
       setCompanySaving(false);
     }
   };
- 
+
   const cancelCompany = () => {
+    // Restore from savedCompanyForm — last successfully saved state
+    setCompanyForm(savedCompanyForm);
     setCompanyError("");
     setCompanyEdit(false);
   };
- 
-  // ── Save Security (UI only — API not yet created) ──────────────
+
+  // ── Save Security ──────────────────────────────────────────────
   const saveSecurity = async () => {
     setSecurityError("");
+
     if (!securityForm.currentPassword) {
       setSecurityError("Please enter your current password.");
       return;
@@ -210,51 +252,55 @@ export default function Profile() {
       setSecurityError("New passwords do not match.");
       return;
     }
-    if (securityForm.newPassword.length < 6) {
-      setSecurityError("New password must be at least 6 characters.");
-      return;
-    }
+
     setSecuritySaving(true);
     try {
-      // API not yet created — placeholder
-      // await api.patch("/profile/password", {
-      //   current_password: securityForm.currentPassword,
-      //   new_password: securityForm.newPassword,
-      // });
-      await new Promise((r) => setTimeout(r, 600)); // simulate delay
+      await api.patch("/profile/change-password", {
+        current_pass: securityForm.currentPassword,
+        new_pass: securityForm.newPassword,
+        confirm_pass: securityForm.confirmPassword, // required by backend model validator
+      });
+
+      // Always clear password fields after save — never persist them in state
       setSecurityForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
       setSecurityEdit(false);
       setSecuritySuccess(true);
       setTimeout(() => setSecuritySuccess(false), 3000);
     } catch (err) {
-      setSecurityError(err.response?.data?.detail ?? "Failed to update password.");
+      // FIX: handle both array (Pydantic 422) and string error details
+      const detail = err.response?.data?.detail;
+      setSecurityError(
+        Array.isArray(detail)
+          ? detail.map((e) => e.msg.replace("Value error, ", "")).join(" • ")
+          : (detail ?? "Failed to update password.")
+      );
     } finally {
       setSecuritySaving(false);
     }
   };
- 
+
+  // FIX: cancelSecurity was missing — referenced in JSX but never defined
   const cancelSecurity = () => {
+    // Password fields are always cleared on cancel — correct behavior
     setSecurityForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
     setSecurityError("");
     setSecurityEdit(false);
   };
- 
+
   // ── Derived Select values ──────────────────────────────────────
   const selectedLocations = locationOptions.filter((o) =>
     prefForm.location_ids.includes(o.value)
   );
   const selectedDomain =
     domainOptions.find((o) => o.value === prefForm.preferred_domain_id) ?? null;
- 
+
   if (loading) {
-    return (
-      <Loader/>
-    );
+    return <Loader />;
   }
- 
+
   return (
     <div className="profile-page">
- 
+
       {/* Top Bar */}
       <div className="top-bar">
         <button
@@ -265,9 +311,9 @@ export default function Profile() {
         </button>
         <Logout />
       </div>
- 
+
       <div className="page-body">
- 
+
         {/* Sidebar */}
         <div className="sidebar">
           <div className="sidebar-profile-mini">
@@ -282,27 +328,26 @@ export default function Profile() {
               className={`nav-item ${active === "personal" ? "nav-active" : ""}`}
               onClick={() => handleScroll("personal", personalRef)}
             >
-               Personal Info
+              Personal Info
             </button>
             <button
               className={`nav-item ${active === "preferences" ? "nav-active" : ""}`}
               onClick={() => handleScroll("preferences", prefRef)}
             >
-              
               {role === "jobseeker" ? "Preferences" : "Company Info"}
             </button>
             <button
               className={`nav-item ${active === "security" ? "nav-active" : ""}`}
               onClick={() => handleScroll("security", securityRef)}
             >
-               Security
+              Security
             </button>
           </nav>
         </div>
- 
+
         {/* Main Content */}
         <div className="main-content">
- 
+
           {/* ── Personal Info Card ── */}
           <div ref={personalRef} className="card">
             <div className="card-header">
@@ -314,14 +359,13 @@ export default function Profile() {
               </div>
               {!personalEdit && (
                 <button className="edit-btn" onClick={() => setPersonalEdit(true)}>
-                   Edit Profile
+                  Edit Profile
                 </button>
               )}
             </div>
- 
+
             <div className="card-divider" />
- 
-            {/* View mode */}
+
             {!personalEdit && (
               <div className="info-grid">
                 <div className="info-field">
@@ -338,8 +382,7 @@ export default function Profile() {
                 </div>
               </div>
             )}
- 
-            {/* Edit mode */}
+
             {personalEdit && (
               <div className="edit-section">
                 <div className="form-row">
@@ -376,12 +419,14 @@ export default function Profile() {
                         setPersonalForm({ ...personalForm, phone: e.target.value })
                       }
                     />
-                    <span className="field-hint">Format: +[country code][number] — e.g. +919876543210</span>
+                    <span className="field-hint">
+                      Format: +[country code][number] — e.g. +919876543210
+                    </span>
                   </div>
                 </div>
- 
-                {personalError && <p className="msg msg--error">⚠ {personalError}</p>}
- 
+
+                {personalError && <p className="msg msg--error">{personalError}</p>}
+
                 <div className="action-bar">
                   <button className="btn-save" onClick={savePersonal} disabled={personalSaving}>
                     {personalSaving ? <><span className="btn-spinner" /> Saving…</> : "Save Changes"}
@@ -392,10 +437,12 @@ export default function Profile() {
                 </div>
               </div>
             )}
- 
-            {personalSuccess && <p className="msg msg--success">✓ Personal info updated successfully</p>}
+
+            {personalSuccess && (
+              <p className="msg msg--success"> Personal info updated successfully</p>
+            )}
           </div>
- 
+
           {/* ── Job Preferences Card (jobseeker) ── */}
           {role === "jobseeker" && (
             <div ref={prefRef} className="card">
@@ -403,18 +450,20 @@ export default function Profile() {
                 <div className="card-title-group">
                   <h3 className="card-title">Job Preferences</h3>
                   <p className="card-subtitle">
-                    {prefEdit ? "Update your job search preferences" : "Your current job search settings"}
+                    {prefEdit
+                      ? "Update your job search preferences"
+                      : "Your current job search settings"}
                   </p>
                 </div>
                 {!prefEdit && (
                   <button className="edit-btn" onClick={() => setPrefEdit(true)}>
-                     Edit
+                    Edit
                   </button>
                 )}
               </div>
- 
+
               <div className="card-divider" />
- 
+
               <div className="preferences-grid">
                 <div className="pref-field">
                   <label className="form-label">Preferred Locations</label>
@@ -434,7 +483,7 @@ export default function Profile() {
                     classNamePrefix="rselect"
                   />
                 </div>
- 
+
                 <div className="pref-field">
                   <label className="form-label">Industry Domain</label>
                   <Select
@@ -452,7 +501,7 @@ export default function Profile() {
                     classNamePrefix="rselect"
                   />
                 </div>
- 
+
                 <div className="pref-field">
                   <label className="form-label">Years of Experience</label>
                   <select
@@ -472,9 +521,9 @@ export default function Profile() {
                   </select>
                 </div>
               </div>
- 
+
               {prefError && <p className="msg msg--error">{prefError}</p>}
- 
+
               {prefEdit && (
                 <div className="action-bar">
                   <button className="btn-save" onClick={savePreferences} disabled={prefSaving}>
@@ -485,9 +534,11 @@ export default function Profile() {
                   </button>
                 </div>
               )}
- 
-              {prefSuccess && <p className="msg msg--success">✓ Preferences updated successfully</p>}
- 
+
+              {prefSuccess && (
+                <p className="msg msg--success"> Preferences updated successfully</p>
+              )}
+
               {/* Resume upload */}
               <div className="upload-zone">
                 <p className="upload-title">Upload Resume</p>
@@ -496,7 +547,7 @@ export default function Profile() {
               </div>
             </div>
           )}
- 
+
           {/* ── Company Info Card (recruiter) ── */}
           {role === "recruiter" && (
             <div ref={prefRef} className="card">
@@ -509,30 +560,31 @@ export default function Profile() {
                 </div>
                 {!companyEdit && (
                   <button className="edit-btn" onClick={() => setCompanyEdit(true)}>
-                     Edit
+                    Edit
                   </button>
                 )}
               </div>
- 
+
               <div className="card-divider" />
- 
+
               {!companyEdit && (
                 <div className="info-grid">
                   <div className="info-field">
                     <span className="field-label">Company Name</span>
-                    <span className="field-value">{companyForm.company_name || "—"}</span>
+                    {/* Always display from savedCompanyForm to show DB truth */}
+                    <span className="field-value">{savedCompanyForm.company_name || "—"}</span>
                   </div>
                   <div className="info-field">
                     <span className="field-label">Website</span>
-                    <span className="field-value">{companyForm.website || "—"}</span>
+                    <span className="field-value">{savedCompanyForm.website || "—"}</span>
                   </div>
                   <div className="info-field info-field--full">
                     <span className="field-label">Description</span>
-                    <span className="field-value">{companyForm.description || "—"}</span>
+                    <span className="field-value">{savedCompanyForm.description || "—"}</span>
                   </div>
                 </div>
               )}
- 
+
               {companyEdit && (
                 <div className="edit-section">
                   <div className="form-row form-row--2col">
@@ -572,9 +624,9 @@ export default function Profile() {
                       }
                     />
                   </div>
- 
+
                   {companyError && <p className="msg msg--error">⚠ {companyError}</p>}
- 
+
                   <div className="action-bar">
                     <button className="btn-save" onClick={saveCompany} disabled={companySaving}>
                       {companySaving ? <><span className="btn-spinner" /> Saving…</> : "Save Changes"}
@@ -585,38 +637,40 @@ export default function Profile() {
                   </div>
                 </div>
               )}
- 
-              {companySuccess && <p className="msg msg--success">✓ Company info updated successfully</p>}
+
+              {companySuccess && (
+                <p className="msg msg--success"> Company info updated successfully</p>
+              )}
             </div>
           )}
- 
+
           {/* ── Security Card ── */}
           <div ref={securityRef} className="card">
             <div className="card-header">
               <div className="card-title-group">
                 <h3 className="card-title">Security & Password</h3>
                 <p className="card-subtitle">
-                  {securityEdit ? "Enter your current and new password" : "Manage your account password"}
+                  {securityEdit
+                    ? "Enter your current and new password"
+                    : "Manage your account password"}
                 </p>
               </div>
               {!securityEdit && (
                 <button className="edit-btn" onClick={() => setSecurityEdit(true)}>
-                   Change Password
+                  Change Password
                 </button>
               )}
             </div>
- 
+
             <div className="card-divider" />
- 
-            {/* View mode */}
+
             {!securityEdit && (
               <div className="security-placeholder">
                 <p className="security-text">Your password is set and secure.</p>
                 <p className="security-hint">Click "Change Password" to update it.</p>
               </div>
             )}
- 
-            {/* Edit mode */}
+
             {securityEdit && (
               <div className="edit-section">
                 <div className="form-row">
@@ -643,7 +697,10 @@ export default function Profile() {
                         setSecurityForm({ ...securityForm, newPassword: e.target.value })
                       }
                     />
-                    <span className="field-hint">Minimum 6 characters</span>
+                    {/* FIX: updated hint to match actual backend password requirements */}
+                    <span className="field-hint">
+                      Min 8 chars with uppercase, lowercase, number & special character (@$!%*?&)
+                    </span>
                   </div>
                   <div className="form-group">
                     <label className="form-label">Confirm New Password</label>
@@ -658,9 +715,9 @@ export default function Profile() {
                     />
                   </div>
                 </div>
- 
-                {securityError && <p className="msg msg--error">⚠ {securityError}</p>}
- 
+
+                {securityError && <p className="msg msg--error"> {securityError}</p>}
+
                 <div className="action-bar">
                   <button className="btn-save" onClick={saveSecurity} disabled={securitySaving}>
                     {securitySaving ? <><span className="btn-spinner" /> Updating…</> : "Update Password"}
@@ -671,10 +728,12 @@ export default function Profile() {
                 </div>
               </div>
             )}
- 
-            {securitySuccess && <p className="msg msg--success">Password updated successfully</p>}
+
+            {securitySuccess && (
+              <p className="msg msg--success"> Password updated successfully</p>
+            )}
           </div>
- 
+
         </div>
       </div>
     </div>
