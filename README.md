@@ -1,8 +1,8 @@
 # 🚀 AI-Powered Job Recommender System
 
-An intelligent full-stack Job Recommendation Platform that matches job seekers with relevant jobs using **AI-powered semantic search and embeddings**.
+An intelligent full-stack Job Recommendation Platform that matches job seekers with relevant jobs using **AI-powered semantic search and vector embeddings**.
 
-This system uses resume parsing, skill extraction, and vector similarity search to recommend the most relevant jobs instead of simple keyword matching.
+Instead of simple keyword matching, this system parses resumes with an LLM, extracts structured skill and experience data, generates multiple embeddings, and ranks jobs using weighted cosine similarity via pgvector.
 
 ---
 
@@ -10,56 +10,76 @@ This system uses resume parsing, skill extraction, and vector similarity search 
 
 This project is currently under active development.
 
+---
+
 ## 🔥 Key Features
 
 ### 👨‍💼 Recruiter Dashboard
 - Secure JWT-based authentication
-- Post new job listings
-- View all posted jobs
-- Delete jobs
-- Job description embeddings stored using pgvector
+- Post new job listings with AI-generated embeddings
+- View and delete posted jobs
+- Job descriptions parsed into skill + summary embeddings via LLM
 
 ### 👩‍💻 Job Seeker Dashboard
 - Register & login
-- Upload resume (PDF supported)
-- Resume converted to text
-- Skills & responsibilities extracted using LLM
-- Resume embeddings generated
-- AI-based job recommendations
-- Filter jobs by:
-  - Location
-  - Industry Domain
-  - Experience
+- Build a profile with preferred domain, experience, and locations
+- Upload resume (PDF, max 5 MB)
+- Resume parsed by LLM → skills, work experience, and projects extracted separately
+- Three resume embeddings generated and stored
+- AI-based job recommendations with match score (0–100)
+- Two recommendation modes:
+  - **Profile Mode** — uses saved profile filters + stored resume embeddings
+  - **Manual Mode** — custom filters with optional one-shot resume upload (not saved to DB)
+- Filter jobs by Industry Domain, Experience, and multiple Locations
 
 ---
 
 ## 🧠 AI & Smart Matching
 
-Instead of traditional keyword filtering, this system:
+### Embedding Architecture
 
-- Converts job descriptions into vector embeddings
-- Converts resumes into vector embeddings
-- Uses PostgreSQL + pgvector for similarity search
-- Returns most relevant jobs using semantic similarity
+| Resume Vector | Job Vector | Weight |
+|---|---|---|
+| `skill_embedding` | `skill_embedding` | 50% |
+| `work_embedding` | `job_embedding` | 30% |
+| `project_embedding` | `job_embedding` | 20% |
+
+- Resume is split into **three separate embeddings**: skills, work experience summary, and projects summary
+- Job descriptions are split into **two embeddings**: skills and a combined responsibility + domain summary
+- Weighted cosine distance is computed in PostgreSQL using pgvector
+- Match score = `(1 − weighted_distance) × 100`
+
+### LLM Extraction (Gemini)
+**Resume → extracts:**
+- Skills (normalized, space-separated)
+- Education
+- Work experience summary (employment only, anonymized)
+- Projects summary (personal/academic only, anonymized)
+
+**Job Description → extracts:**
+- Job role
+- Skills (normalized, space-separated)
+- Education requirement
+- Job summary (responsibilities + domain context combined)
 
 ---
 
 ## 🛠 Tech Stack
 
 ### Backend
-- FastAPI
-- SQLAlchemy ORM
-- PostgreSQL
-- pgvector (vector similarity search)
-- JWT Authentication
-- Sentence Transformers (for embeddings)
-- LLM-based skill extraction (Gemini api)
+- **FastAPI** — REST API framework
+- **SQLAlchemy ORM** — database models
+- **PostgreSQL + pgvector** — vector similarity search
+- **Sentence Transformers** — `multi-qa-MiniLM-L6-cos-v1` (384-dim embeddings)
+- **LangChain + Gemini API** — LLM-based structured extraction
+- **PyMuPDF** — PDF text extraction
+- **JWT Authentication** — role-based access control
 
 ### Frontend
-- React.js
-- Axios
-- Custom CSS
-- Role-based dashboards
+- **React.js** with React Router
+- **Axios** — API communication
+- **react-select** — multi-select location filter
+- Custom CSS — role-based dashboards
 
 ---
 
@@ -70,25 +90,25 @@ AI-powered-job-recommender-system/
 │
 ├── backend/
 │   ├── app/
-│   │   ├── models.py
-│   │   ├── schemas.py
-│   │   ├── database.py
-│   │   ├── main.py
-│   │   ├── utils.py
-│   │   ├── auth/
-│   │   ├── jobs/
-│   │   └── resume/
+│   │   ├── models.py          # SQLAlchemy models (User, Job, Resume, etc.)
+│   │   ├── schemas.py         # Pydantic schemas
+│   │   ├── database.py        # DB connection
+│   │   ├── main.py            # App entry point
+│   │   ├── utils.py           # Auth helpers
+│   │   ├── auth/              # Login & signup routes
+│   │   ├── jobs/              # Job posting routes + job embedding utils
+│   │   ├── resume/            # Resume upload routes + resume embedding utils
+│   │   └── recommendations/   # Recommendation route (profile & manual modes)
 │   └── requirements.txt
 │
 ├── frontend/
 │   ├── src/
-│   │   ├── components/
-│   │   ├── pages/
-│   │   ├── services/
+│   │   ├── components/        # JobCard, Loader, Logout, etc.
+│   │   ├── pages/             # JobListPage, ProfilePage, etc.
+│   │   ├── api/               # Axios instance
 │   │   └── styles/
 │   └── package.json
 │
-├
 └── README.md
 ```
 
@@ -96,20 +116,28 @@ AI-powered-job-recommender-system/
 
 ## ⚙️ Setup Instructions
 
----
-
 ### 🧩 Prerequisites
 
 - Python 3.9+
 - Node.js 14+
-- PostgreSQL installed 
+- PostgreSQL installed and running
 - pgvector extension enabled
 
-To enable pgvector:
-
 ```sql
-CREATE EXTENSION vector;
+CREATE EXTENSION IF NOT EXISTS vector;
 ```
+
+> **Important:** Ensure embedding columns in the `resume` and `job` tables are typed as `vector(384)`, not `varchar`. If you encounter a `StringDataRightTruncation` error, run:
+> ```sql
+> ALTER TABLE resume
+>   ALTER COLUMN skill_embedding   TYPE vector(384) USING skill_embedding::vector,
+>   ALTER COLUMN work_embedding    TYPE vector(384) USING work_embedding::vector,
+>   ALTER COLUMN project_embedding TYPE vector(384) USING project_embedding::vector;
+>
+> ALTER TABLE job
+>   ALTER COLUMN skill_embedding TYPE vector(384) USING skill_embedding::vector,
+>   ALTER COLUMN job_embedding   TYPE vector(384) USING job_embedding::vector;
+> ```
 
 ---
 
@@ -122,21 +150,15 @@ git clone https://github.com/Hardinaik/AI-powered-job-recommender-system.git
 cd AI-powered-job-recommender-system/backend
 ```
 
-### 2️⃣ Create Virtual Environment
+### 2️⃣ Create & Activate Virtual Environment
 
 ```bash
 python -m venv venv
-```
 
-Activate:
-
-Windows:
-```bash
+# Windows
 venv\Scripts\activate
-```
 
-Mac/Linux:
-```bash
+# Mac/Linux
 source venv/bin/activate
 ```
 
@@ -148,15 +170,17 @@ pip install -r requirements.txt
 
 ### 4️⃣ Configure Environment Variables
 
-Create a `.env` file inside backend folder:
+Create a `.env` file inside the `backend/` folder:
 
-```
+```env
 DATABASE_URL=postgresql://username:password@localhost:5432/jobdb
 SECRET_KEY=your_secret_key
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
-GEMINI_API_KEY=your_api_key_here
+API_KEY=your_gemini_api_key_here
 ```
+
+> Note: The Gemini API key env variable is `API_KEY` (not `GEMINI_API_KEY`).
 
 ### 5️⃣ Run Server
 
@@ -164,21 +188,12 @@ GEMINI_API_KEY=your_api_key_here
 uvicorn app.main:app --reload
 ```
 
-Backend will run on:
-```
-http://127.0.0.1:8000
-```
-
-Swagger Docs:
-```
-http://127.0.0.1:8000/docs
-```
+- API: `http://127.0.0.1:8000`
+- Swagger Docs: `http://127.0.0.1:8000/docs`
 
 ---
 
 ## 💻 Frontend Setup
-
-Navigate to frontend folder:
 
 ```bash
 cd ../frontend
@@ -186,74 +201,101 @@ npm install
 npm start
 ```
 
-Frontend runs on:
-```
-http://localhost:3000
-```
+Frontend runs on `http://localhost:3000`
 
 ---
 
 ## 🔐 Authentication
 
 - JWT-based authentication
-- Role-based access control:
-  - Recruiter
-  - Job Seeker
+- Role-based access control: **Recruiter** / **Job Seeker**
 - Token stored in localStorage
 - Protected API routes
 
 ---
 
-## 📌 Core API Endpoints
+## 📌 API Endpoints
 
 ### 🔑 Auth
-- `POST /auth/signup`
-- `POST /auth/login`
-
+| Method | Endpoint |
+|---|---|
+| POST | `/auth/signup` |
+| POST | `/auth/login` |
 
 ### 💼 Jobs
-- `POST /jobs/post`
-- `GET /jobs/postedjobs`
-- `DELETE /jobs/{job_id}`
-- `GET /jobs/locations`
-- `GET /jobs/industry-domains`
+| Method | Endpoint |
+|---|---|
+| POST | `/jobs/post` |
+| GET | `/jobs/postedjobs` |
+| DELETE | `/jobs/{job_id}` |
+| GET | `/jobs/locations` |
+| GET | `/jobs/industry-domains` |
 
-### Recommendations
-- 'POST /recommendations/jobs'
+### 📄 Resume
+| Method | Endpoint |
+|---|---|
+| POST | `/resume/upload` |
 
-### Applications
+### 🤖 Recommendations
+| Method | Endpoint | Notes |
+|---|---|---|
+| POST | `/recommendations/jobs` | `use_profile=true` for profile mode, `false` for manual |
 
--'POST /applications/jobs/{job_id}/save'
--'POST /applications/jobs/{job_id}/apply'
--'GET /applications/saved-jobs/ids'
--'GET /applications/applied-jobs/ids'
--'GET /applications/saved-jobs/details'
--'GET /applications/applied-jobs/details'
+**Manual mode query params:** `domain_id`, `location_ids` (repeatable), `experience`  
+**Manual mode form fields:** `use_profile`, `resume_file` (optional, not saved to DB)
 
-
+### 📋 Applications
+| Method | Endpoint |
+|---|---|
+| POST | `/applications/jobs/{job_id}/save` |
+| POST | `/applications/jobs/{job_id}/apply` |
+| GET | `/applications/saved-jobs/ids` |
+| GET | `/applications/applied-jobs/ids` |
+| GET | `/applications/saved-jobs/details` |
+| GET | `/applications/applied-jobs/details` |
 
 ---
 
 ## 🧪 Example Workflow
 
-1. Recruiter logs in  
-2. Recruiter posts a job  
-3. Job embedding is generated and stored  
-4. Job seeker uploads resume and applies filters  
-5. Resume text extracted & skills parsed  
-6. Resume embedding generated  
-7. Similarity search performed  
-8. Top matching jobs returned  
+**Recruiter:**
+1. Recruiter signs up and logs in
+2. Posts a job description
+3. LLM extracts skills + job summary → two embeddings stored in DB
+
+**Job Seeker:**
+1. Job seeker signs up and logs in
+2. Fills out profile (domain, experience, preferred locations)
+3. Uploads resume → LLM extracts skills, work history, projects → three embeddings stored
+4. Opens job listings page:
+   - **Profile mode**: checks "Recommend using profile" → backend uses saved profile filters + stored embeddings
+   - **Manual mode**: selects domain, locations (multi-select), experience, and optionally uploads a resume for one-shot scoring
+5. Jobs ranked by weighted cosine similarity and returned with a match score
 
 ---
 
 ## 🧬 How Recommendation Works
 
 ```
-Resume → Text Extraction → Skill Extraction,Work/Project Summary Extraction → Embedding
-Job Description → Skill Extraction, Responsibility Summary Extraction → Embedding
-Cosine Similarity (pgvector)
-similar jobs returned
+Resume PDF
+  └─► Text Extraction (PyMuPDF)
+  └─► PII Removal
+  └─► LLM Extraction (Gemini)
+        ├─ skills          → skill_embedding   (384-dim)
+        ├─ work summary    → work_embedding    (384-dim)
+        └─ project summary → project_embedding (384-dim)
+
+Job Description
+  └─► LLM Extraction (Gemini)
+        ├─ skills      → skill_embedding  (384-dim)
+        └─ job summary → job_embedding    (384-dim)
+
+Weighted Cosine Similarity (pgvector):
+  50% × cosine(resume.skill_embedding,   job.skill_embedding)
+  30% × cosine(resume.work_embedding,    job.job_embedding)
+  20% × cosine(resume.project_embedding, job.job_embedding)
+
+→ Top N jobs returned ordered by match score
 ```
 
 ---
@@ -261,8 +303,10 @@ similar jobs returned
 ## 📈 Future Improvements
 
 - Admin dashboard
-- Improved ranking algorithm
-- Cloud deployment (AWS/GCP)
+- Support for multiple preferred location filtering in profile mode
+- Cloud deployment (AWS / GCP)
+- Resume versioning
+- Email notifications for new matching jobs
 
 ---
 
@@ -270,10 +314,9 @@ similar jobs returned
 
 **Hardi Naik**  
 DA-IICT Gandhinagar  
-AI & ML Enthusiast  
+AI & ML Enthusiast
 
-GitHub:
-https://github.com/Hardinaik
+GitHub: [https://github.com/Hardinaik](https://github.com/Hardinaik)
 
 ---
 
