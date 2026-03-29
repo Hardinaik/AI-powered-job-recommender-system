@@ -43,7 +43,7 @@ def create_job(
         )
 
     # Generate embeddings
-    embedding_skill, embedding_res = create_job_embedding(job.job_description)
+    skill_embedding , job_embedding = create_job_embedding(job.job_description)
 
     new_job = Job(
         job_title=job.job_title,
@@ -52,8 +52,8 @@ def create_job(
         min_experience=job.min_experience,
         job_description=job.job_description,
         recruiter_id=current_recruiter["user_id"],
-        skill_embedding=embedding_skill,
-        job_embedding=embedding_res,
+        skill_embedding=skill_embedding,
+        job_embedding=job_embedding,
         posted_at=datetime.now(timezone.utc)
     )
 

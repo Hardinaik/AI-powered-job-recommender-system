@@ -66,8 +66,9 @@ class Resume(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
 
     resume_url = Column(Text)
-    resume_embedding = Column(Vector(384), nullable=False)
+    work_embedding = Column(Vector(384), nullable=False)
     skill_embedding = Column(Vector(384), nullable=False)
+    project_embedding=Column(Vector(384), nullable=False)
 
     updated_at = Column(
         TIMESTAMP(timezone=True),

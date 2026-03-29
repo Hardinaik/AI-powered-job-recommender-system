@@ -37,7 +37,7 @@ def get_llm() -> ChatGoogleGenerativeAI:
 def get_embedding_model() -> SentenceTransformer:
     global _embedding_model
     if _embedding_model is None:
-        _embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
+        _embedding_model = SentenceTransformer("multi-qa-MiniLM-L6-cos-v1")
     return _embedding_model
 
 
@@ -75,40 +75,47 @@ def validate_file_size(file: UploadFile) -> None:
 # ---------------------------------------------------------------------------
 
 template = """
-### ROLE
-You are a specialized HR Data Extraction Assistant. Your goal is to convert resume text into a strictly anonymized, machine-readable JSON format for unbiased screening and vector embedding.
-
-### EXTRACTION RULES
-
-1. **Skills (Normalized List)**: 
-   - Extract a clean list of technical and soft skills.
-   - Normalize variations (e.g., "Python3" to "Python", "Postgres" to "PostgreSQL").
-   - Return as a single string of comma-separated values.
-
-2. **Education (Highest Degree)**: 
-   - Extract the highest Degree only (e.g., "B.Tech in Computer Science", "M.S. in Data Science").
-   - Do NOT include university names.
-
-3. **Anonymized Summary (3-5 Sentences)**: 
-   - **STRICT ANONYMIZATION**: Remove all PII. Do NOT mention Names, Company Names, or University Names.
-   - **CONTENT FOCUS**: Consolidate all work experience and projects into a dense 3-5 sentence narrative. 
-   - Use the formula: **[Seniority/Role] + [Core Tech Stack] + [Impact/Action]**.
-   - Ensure specific domains (e.g., Java Backend, Time-series, LLMs, Sales Forecasting) are mentioned.
-   - Just focus on past work experience and projects — no other things.
-
-### INPUT DATA
-{resume}
-
-### OUTPUT SPECIFICATION
-- Return ONLY the JSON object. No preamble or markdown code blocks.
-- Follow this exact schema:
-
-{{
-    "skills": "skill1, skill2, skill3",
-    "education": "Degree Name (e.g. B.Tech in Computer Science)",
-    "summary_of_experience": "A dense 3-5 sentence professional summary focused on technical impact and stack."
-}}
+    ### ROLE
+    You are a specialized HR Data Extraction Assistant. Your goal is to convert resume text into a strictly anonymized, machine-readable JSON format for unbiased screening and vector embedding.
+    
+    ### EXTRACTION RULES
+    
+    1. **Skills (Normalized List)**:
+    - Extract a clean list of technical and soft skills.
+    - Normalize variations (e.g., "Python3" → "Python", "Postgres" → "PostgreSQL").
+    - Return as a SPACE-SEPARATED string (no commas). Example: "Python FastAPI PostgreSQL React Docker".
+    
+    2. **Education (Highest Degree)**:
+    - Extract the highest degree only (e.g., "B.Tech in Computer Science").
+    - Do NOT include university names.
+    
+    3. **Work Experience Summary (2-3 sentences)**:
+    - Cover ONLY actual employment history (internships and full-time jobs count).
+    - If no employment history exists, return an empty string "".
+    - STRICT ANONYMIZATION: No names, company names, or university names.
+    - Formula: [Seniority/Role] + [Core Tech Stack] + [Impact/Action].
+    
+    4. **Projects Summary (1-2 sentences)**:
+    - Cover ONLY personal, academic, or open-source projects (not actual jobs).
+    - If no projects exist, return an empty string "".
+    - STRICT ANONYMIZATION: No names, company names, or university names.
+    - Focus on tech stack used and what was built/achieved.
+    
+    ### INPUT DATA
+    {resume}
+    
+    ### OUTPUT SPECIFICATION
+    - Return ONLY the JSON object. No preamble, no markdown code blocks.
+    - Follow this exact schema:
+    
+    {{
+        "skills": "skill1 skill2 skill3",
+        "education": "Degree Name (e.g. B.Tech in Computer Science)",
+        "work_experience_summary": "2-3 sentences on actual employment only. Empty string if none.",
+        "projects_summary": "1-2 sentences on personal/academic projects only. Empty string if none."
+    }}
 """
+
 
 
 def extract_text_from_pdf(file_path: str) -> str:
@@ -159,53 +166,117 @@ def clean_resume_text(text: str) -> str:
 
 def extract_json(filepath: str) -> dict:
     """
-    Extracts structured resume data (skills, education, summary) from a PDF
-    using the LLM chain. Returns a dict with keys:
-        - skills
+    Extracts structured resume data from a PDF using the LLM chain.
+ 
+    Returns a dict with keys:
+        - skills                 (space-separated string)
         - education
-        - summary_of_experience
+        - work_experience_summary
+        - projects_summary
+ 
+    FIX 4: Added validation — if Gemini omits required keys or returns
+    empty values for both summaries, we raise a clear 422 error instead
+    of silently encoding empty strings into vectors (which match everything
+    badly and pollute the recommendation scores).
     """
     raw_text = extract_text_from_pdf(filepath)
     cleaned_text = clean_resume_text(raw_text)
-
+ 
     prompt = PromptTemplate.from_template(template)
     chain = prompt | get_llm() | JsonOutputParser()
-
+ 
     extracted: dict = chain.invoke({"resume": cleaned_text})
+ 
+    # Validate required keys are present
+    required_keys = {"skills", "education", "work_experience_summary", "projects_summary"}
+    missing_keys = required_keys - set(extracted.keys())
+    if missing_keys:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"Resume parsing failed — LLM response missing fields: {missing_keys}. "
+                "Try a cleaner or more complete PDF."
+            ),
+        )
+ 
+    # Validate that at least one content field is non-empty
+    # (a resume with no skills AND no summaries is unembeddable)
+    if not extracted.get("skills", "").strip():
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Resume parsing failed — could not extract any skills. "
+                "Ensure the PDF contains readable text (not a scanned image)."
+            ),
+        )
+ 
+    if not extracted.get("work_experience_summary", "").strip() and \
+       not extracted.get("projects_summary", "").strip():
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "Resume parsing failed — could not extract work experience or projects. "
+                "Ensure the PDF contains readable text (not a scanned image)."
+            ),
+        )
+ 
     return extracted
-
-
-def create_resume_embedding(filepath: str) -> tuple[list[float], list[float]]:
+ 
+ 
+def create_resume_embedding(filepath: str) -> tuple[list[float], list[float], list[float]]:
     """
-    Processes a resume PDF and returns two normalized embeddings:
-
+    Processes a resume PDF and returns THREE normalized embeddings.
+ 
     Returns:
         skill_embedding   : embedding of the extracted skills string
-        work_embedding    : embedding of the extracted experience summary
-
+        work_embedding    : embedding of the work experience summary
+        project_embedding : embedding of the projects summary
+ 
     Storage mapping (matches Resume model columns):
-        Resume.skill_embedding    ← skill_embedding  (index 0)
-        Resume.resume_embedding   ← work_embedding   (index 1)
+        Resume.skill_embedding    ← skill_embedding   (index 0)
+        Resume.resume_embedding   ← work_embedding    (index 1)
+        Resume.project_embedding  ← project_embedding (index 2)  ← NEW COLUMN NEEDED
+ 
+    Caller unpacks as:
+        skill_emb, work_emb, project_emb = create_resume_embedding(path)
+ 
+    NOTE: You need to add a `project_embedding` column to your Resume model:
+        project_embedding = mapped_column(Vector(384), nullable=True)
+ 
+    And update the route to store and use this third vector.
     """
     document = extract_json(filepath)
-
-    resume_skills: str = document.get("skills", "")
-    resume_work_summary: str = document.get("summary_of_experience", "")
-
     model = get_embedding_model()
-
+ 
+    # FIX 3 (applied here): skills are already space-separated from the prompt.
+    # We still strip any accidental commas defensively.
+    resume_skills: str = document.get("skills", "").replace(",", " ").strip()
+    work_summary: str = document.get("work_experience_summary", "").strip()
+    projects_summary: str = document.get("projects_summary", "").strip()
+ 
+    # If one summary is empty, fall back to the other so we never encode
+    # a blank string (blank → near-zero vector → random cosine matches).
+    if not work_summary:
+        work_summary = projects_summary
+    if not projects_summary:
+        projects_summary = work_summary
+ 
     skill_embedding: list[float] = model.encode(
         resume_skills,
         convert_to_numpy=True,
         normalize_embeddings=True,
     ).tolist()
-
+ 
     work_embedding: list[float] = model.encode(
-        resume_work_summary,
+        work_summary,
         convert_to_numpy=True,
         normalize_embeddings=True,
     ).tolist()
-
-    # Return order: (skill_embedding, work_embedding)
-    # Caller unpacks as: skill_emb, work_emb = create_resume_embedding(path)
-    return skill_embedding, work_embedding
+ 
+    project_embedding: list[float] = model.encode(
+        projects_summary,
+        convert_to_numpy=True,
+        normalize_embeddings=True,
+    ).tolist()
+ 
+    return skill_embedding, work_embedding, project_embedding

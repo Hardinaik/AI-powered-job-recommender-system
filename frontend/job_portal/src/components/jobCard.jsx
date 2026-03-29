@@ -83,7 +83,7 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
           onClick={handleApplyJob}
           disabled={applied}
         >
-          {applied ? "✓ Applied" : "Apply Now"}
+          {applied ? " Applied" : "Apply Now"}
         </button>
  
         <button

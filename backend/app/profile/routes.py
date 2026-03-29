@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException,status
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
+from sqlalchemy.exc import IntegrityError
 from app.models import User, JobSeekerProfile,RecruiterProfile,Location
 from .schemas import UserProfileResponse,PersonalInfoUpdate,CompanyInfoUpdate,JobSeekerPrefUpdate,PasswordChange
 from .utils import get_current_user_obj
@@ -8,17 +9,6 @@ from app.utils import verify_password,hash_password
 
 
 router=APIRouter(prefix="/profile",tags=["Profile"])
-
-
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy.exc import IntegrityError
-from app.database import get_db
-from app.models import User, JobSeekerProfile, RecruiterProfile
-from .schemas import UserProfileResponse, PersonalInfoUpdate
-from .utils import get_current_user_obj
-
-router = APIRouter(prefix="/profile", tags=["Profile"])
 
 @router.get("/details", response_model=UserProfileResponse)
 def get_profile(

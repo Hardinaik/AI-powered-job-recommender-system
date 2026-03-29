@@ -47,7 +47,7 @@ async def upload_resume(
         shutil.copyfileobj(file.file, buffer)
 
     try:
-        skill_embedding, work_embedding = create_resume_embedding(file_path)
+        skill_embedding, work_embedding,project_embedding = create_resume_embedding(file_path)
     except Exception as e:
         if os.path.exists(file_path):
             os.remove(file_path)
@@ -65,7 +65,8 @@ async def upload_resume(
             user_id=user_id,
             resume_url=file_path,
             skill_embedding=skill_embedding,
-            resume_embedding=work_embedding,
+            work_embedding=work_embedding,
+            project_embedding=project_embedding
         )
         db.add(new_resume)
 

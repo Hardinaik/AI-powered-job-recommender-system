@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import Select from "react-select";
 import JobCard from "../components/jobCard";
 import Logout from "../components/auth/Logout";
 import Loader from "../components/loader";
 import api from "../api/axios";
 import "./JobListPage.css";
- 
+
 function JobListPage() {
   const navigate = useNavigate();
   const [domains, setDomains] = useState([]);
@@ -14,16 +15,25 @@ function JobListPage() {
   const [savedJobIds, setSavedJobIds] = useState([]);
   const [appliedJobIds, setAppliedJobIds] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [useSavedResume, setUseSavedResume] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [view, setView] = useState("all");
+
+  // --- Filter state ---
+  const [useProfile, setUseProfile] = useState(false);       // "Recommend using profile" checkbox
+  const [selectedFile, setSelectedFile] = useState(null);    // manual resume upload
   const [domainId, setDomainId] = useState("");
-  const [locationId, setLocationId] = useState("");
+  const [selectedLocations, setSelectedLocations] = useState([]); // [{ value, label }, ...]
   const [experience, setExperience] = useState("");
- 
-  const experienceOptions = [...Array.from({ length: 31 }, (_, i) => i)];
- 
-  // 1. Initial Load: IDs and Form Options
+
+  const [view, setView] = useState("all");
+
+  const experienceOptions = Array.from({ length: 31 }, (_, i) => i);
+
+  // react-select options derived from locations list
+  const locationOptions = locations.map((loc) => ({
+    value: loc.id,
+    label: loc.name,
+  }));
+
+  // ── 1. Initial Load ──
   useEffect(() => {
     const initData = async () => {
       setLoading(true);
@@ -34,12 +44,12 @@ function JobListPage() {
           api.get("/applications/saved-jobs/ids"),
           api.get("/applications/applied-jobs/ids"),
         ]);
- 
+
         setDomains(domainRes.data);
         setLocations(locationRes.data);
         setSavedJobIds(savedIdsRes.data);
         setAppliedJobIds(appliedIdsRes.data);
- 
+
         await applyFilters();
       } catch (error) {
         console.error("Initialization failed", error);
@@ -49,22 +59,22 @@ function JobListPage() {
     };
     initData();
   }, []);
- 
-  // 2. Fetch Detailed Content when View Changes
+
+  // ── 2. View Changes ──
   useEffect(() => {
     const fetchViewData = async () => {
       if (view === "all") {
         applyFilters();
         return;
       }
- 
+
       setLoading(true);
       try {
         const endpoint =
           view === "saved"
             ? "/applications/saved-jobs/details"
             : "/applications/applied-jobs/details";
- 
+
         const res = await api.get(endpoint);
         setJobs(res.data);
       } catch (error) {
@@ -74,10 +84,10 @@ function JobListPage() {
         setLoading(false);
       }
     };
- 
+
     fetchViewData();
   }, [view]);
- 
+
   const handleStatusChange = (jobId, type) => {
     if (type === "save") {
       setSavedJobIds((prev) => [...new Set([...prev, jobId])]);
@@ -85,20 +95,47 @@ function JobListPage() {
       setAppliedJobIds((prev) => [...new Set([...prev, jobId])]);
     }
   };
- 
+
   const applyFilters = async () => {
     setLoading(true);
     try {
-      const params = {};
-      if (domainId) params.domain_id = domainId;
-      if (locationId) params.location_id = locationId;
-      if (experience !== "") params.experience = experience;
- 
       const formData = new FormData();
-      formData.append("use_saved_resume", useSavedResume);
-      if (selectedFile) formData.append("resume_file", selectedFile);
- 
-      const response = await api.post("/recommendations/jobs", formData, { params });
+      formData.append("use_profile", useProfile);
+
+      // Manual resume upload — only relevant when profile mode is OFF
+      if (!useProfile && selectedFile) {
+        formData.append("resume_file", selectedFile);
+      }
+
+      // Query params — only sent in manual mode
+      // In profile mode the backend reads these from the saved profile itself
+      const params = {};
+      if (!useProfile) {
+        if (domainId) params.domain_id = domainId;
+        // Send each selected location as a repeated param: ?location_ids=1&location_ids=2
+        selectedLocations.forEach((loc) => {
+          if (!params.location_ids) params.location_ids = [];
+          params.location_ids.push(loc.value);
+        });
+        if (experience !== "") params.experience = experience;
+      }
+
+      const response = await api.post("/recommendations/jobs", formData, {
+        params,
+        // axios serialises repeated array params correctly with this setting
+        paramsSerializer: (p) => {
+          const parts = [];
+          Object.entries(p).forEach(([key, val]) => {
+            if (Array.isArray(val)) {
+              val.forEach((v) => parts.push(`${key}=${v}`));
+            } else {
+              parts.push(`${key}=${val}`);
+            }
+          });
+          return parts.join("&");
+        },
+      });
+
       setJobs(response.data);
     } catch (error) {
       console.error("Fetch failed", error);
@@ -106,21 +143,18 @@ function JobListPage() {
       setLoading(false);
     }
   };
- 
-  const resetFilters = () => {
+
+  const resetFilters = async () => {
     setDomainId("");
-    setLocationId("");
+    setSelectedLocations([]);
     setExperience("");
-    setUseSavedResume(false);
+    setUseProfile(false);
     setSelectedFile(null);
-    fetchJobsWithEmptyFilters();
-  };
- 
-  const fetchJobsWithEmptyFilters = async () => {
+
     setLoading(true);
     try {
       const formData = new FormData();
-      formData.append("use_saved_resume", false);
+      formData.append("use_profile", false);
       const response = await api.post("/recommendations/jobs", formData, { params: {} });
       setJobs(response.data);
       setView("all");
@@ -130,13 +164,24 @@ function JobListPage() {
       setLoading(false);
     }
   };
- 
+
   const viewLabel =
     view === "all" ? "Job Listings" : view === "saved" ? "Saved Jobs" : "Applied Jobs";
- 
+
+  // When profile mode is toggled on, clear manual filter state (and vice-versa)
+  const handleProfileToggle = (checked) => {
+    setUseProfile(checked);
+    if (checked) {
+      setDomainId("");
+      setSelectedLocations([]);
+      setExperience("");
+      setSelectedFile(null);
+    }
+  };
+
   return (
     <div className="page-container">
- 
+
       {/* ── Top Bar ── */}
       <div className="top-bar">
         <button
@@ -162,78 +207,108 @@ function JobListPage() {
         </button>
         <Logout />
       </div>
- 
+
       {/* ── Body ── */}
       <div className="job-page">
- 
+
         {/* ── Filters Sidebar ── */}
         <aside className="filters">
           <h3 className="filters-title">Filters</h3>
           <div className="filter-divider" />
- 
+
+          {/* ── Recommend using profile ── */}
           <div className="filter-group">
-            <label>Industry Domain</label>
-            <select value={domainId} onChange={(e) => setDomainId(e.target.value)}>
-              <option value="">All Domains</option>
-              {domains.map((item) => (
-                <option key={item.id} value={item.id}>{item.name}</option>
-              ))}
-            </select>
-          </div>
- 
-          <div className="filter-group">
-            <label>Location</label>
-            <select value={locationId} onChange={(e) => setLocationId(e.target.value)}>
-              <option value="">All Locations</option>
-              {locations.map((item) => (
-                <option key={item.id} value={item.id}>{item.name}</option>
-              ))}
-            </select>
-          </div>
- 
-          <div className="filter-group">
-            <label>Experience (Years)</label>
-            <select value={experience} onChange={(e) => setExperience(e.target.value)}>
-              <option value="">Any Experience</option>
-              {experienceOptions.map((exp) => (
-                <option key={exp} value={exp}>
-                  {exp === 0 ? "Fresher (0 years)" : `${exp} year${exp > 1 ? "s" : ""}`}
-                </option>
-              ))}
-            </select>
-          </div>
- 
-          <div className="filter-group">
-            <label>Resume Recommendation</label>
-            <div className="old-resume-checkbox">
+            <div className="profile-rec-checkbox">
               <input
                 type="checkbox"
-                id="useOldResume"
-                checked={useSavedResume}
-                onChange={(e) => setUseSavedResume(e.target.checked)}
+                id="useProfile"
+                checked={useProfile}
+                onChange={(e) => handleProfileToggle(e.target.checked)}
               />
-              <label htmlFor="useOldResume">Use saved resume</label>
+              <label htmlFor="useProfile">Recommend using profile</label>
             </div>
-            <div className={`upload-box ${useSavedResume ? "disabled-upload" : ""}`}>
-              <input
-                type="file"
-                id="resume-file"
-                accept=".pdf"
-                onChange={(e) => setSelectedFile(e.target.files[0])}
-                disabled={useSavedResume}
-                hidden
-              />
-              <button
-                className="browse-btn"
-                disabled={useSavedResume}
-                onClick={() => document.getElementById("resume-file").click()}
-              >
-                Browse Files
-              </button>
-              <p>{selectedFile ? selectedFile.name : "PDF, max 5 MB"}</p>
-            </div>
+            {useProfile && (
+              <p className="profile-rec-hint">
+                Filters & resume will be pulled from your saved profile.
+              </p>
+            )}
           </div>
- 
+
+          <div className="filter-divider" />
+
+          {/* ── Manual filters — disabled when profile mode is on ── */}
+          <div className={useProfile ? "filters-manual disabled-filters" : "filters-manual"}>
+
+            <div className="filter-group">
+              <label>Industry Domain</label>
+              <select
+                value={domainId}
+                onChange={(e) => setDomainId(e.target.value)}
+                disabled={useProfile}
+              >
+                <option value="">All Domains</option>
+                {domains.map((item) => (
+                  <option key={item.id} value={item.id}>{item.name}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-group">
+              <label>Locations</label>
+              <Select
+                options={locationOptions}
+                isMulti
+                isDisabled={useProfile}
+                placeholder="Search & select locations…"
+                value={selectedLocations}
+                onChange={(selected) => setSelectedLocations(selected || [])}
+                className="react-select-container"
+                classNamePrefix="rselect"
+              />
+            </div>
+
+            <div className="filter-group">
+              <label>Experience (Years)</label>
+              <select
+                value={experience}
+                onChange={(e) => setExperience(e.target.value)}
+                disabled={useProfile}
+              >
+                <option value="">Any Experience</option>
+                {experienceOptions.map((exp) => (
+                  <option key={exp} value={exp}>
+                    {exp === 0 ? "Fresher (0 years)" : `${exp} year${exp > 1 ? "s" : ""}`}
+                  </option>
+                ))}
+              </select>
+
+            </div>
+
+            {/* Resume upload — manual mode only, no DB save */}
+            <div className="filter-group">
+              <label>Resume (optional)</label>
+              <div className="upload-box">
+                <input
+                  type="file"
+                  id="resume-file"
+                  accept=".pdf"
+                  onChange={(e) => setSelectedFile(e.target.files[0])}
+                  disabled={useProfile}
+                  hidden
+                />
+                <button
+                  className="browse-btn"
+                  disabled={useProfile}
+                  onClick={() => document.getElementById("resume-file").click()}
+                >
+                  Browse Files
+                </button>
+                <p>{selectedFile ? selectedFile.name : "PDF, max 5 MB"}</p>
+              </div>
+            </div>
+
+          </div>
+
           <div className="filter-actions">
             <button className="apply-btn" onClick={applyFilters} disabled={loading}>
               {loading ? "Searching…" : "Apply Filters"}
@@ -243,16 +318,18 @@ function JobListPage() {
             </button>
           </div>
         </aside>
- 
+
         {/* ── Job List ── */}
         <main className="job-list">
           <div className="job-list-header">
             <h3 className="job-list-title">{viewLabel}</h3>
             {!loading && (
-              <span className="job-list-badge">{jobs.length} listing{jobs.length !== 1 ? "s" : ""}</span>
+              <span className="job-list-badge">
+                {jobs.length} listing{jobs.length !== 1 ? "s" : ""}
+              </span>
             )}
           </div>
- 
+
           {loading ? (
             <Loader />
           ) : jobs.length === 0 ? (
@@ -271,10 +348,10 @@ function JobListPage() {
             </div>
           )}
         </main>
- 
+
       </div>
     </div>
   );
 }
- 
+
 export default JobListPage;
