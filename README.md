@@ -127,20 +127,6 @@ AI-powered-job-recommender-system/
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
-> **Important:** Ensure embedding columns in the `resume` and `job` tables are typed as `vector(384)`, not `varchar`. If you encounter a `StringDataRightTruncation` error, run:
-> ```sql
-> ALTER TABLE resume
->   ALTER COLUMN skill_embedding   TYPE vector(384) USING skill_embedding::vector,
->   ALTER COLUMN work_embedding    TYPE vector(384) USING work_embedding::vector,
->   ALTER COLUMN project_embedding TYPE vector(384) USING project_embedding::vector;
->
-> ALTER TABLE job
->   ALTER COLUMN skill_embedding TYPE vector(384) USING skill_embedding::vector,
->   ALTER COLUMN job_embedding   TYPE vector(384) USING job_embedding::vector;
-> ```
-
----
-
 ## 🔧 Backend Setup
 
 ### 1️⃣ Clone the Repository
@@ -180,7 +166,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES=60
 API_KEY=your_gemini_api_key_here
 ```
 
-> Note: The Gemini API key env variable is `API_KEY` (not `GEMINI_API_KEY`).
 
 ### 5️⃣ Run Server
 
@@ -303,10 +288,8 @@ Weighted Cosine Similarity (pgvector):
 ## 📈 Future Improvements
 
 - Admin dashboard
-- Support for multiple preferred location filtering in profile mode
 - Cloud deployment (AWS / GCP)
 - Resume versioning
-- Email notifications for new matching jobs
 
 ---
 
