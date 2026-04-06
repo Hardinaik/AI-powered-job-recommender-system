@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Select from "react-select";
+import { MdCameraAlt } from "react-icons/md";
 import "./ProfilePage.css";
 import Logout from "../components/auth/Logout";
 import Loader from "../components/loader";
@@ -16,6 +17,12 @@ export default function Profile() {
   const [active, setActive] = useState("personal");
   const [role, setRole] = useState("jobseeker");
   const [loading, setLoading] = useState(true);
+
+  // ── Profile Image ──────────────────────────────────────────────
+  const [profileImage, setProfileImage] = useState(null);
+  const [imageUploading, setImageUploading] = useState(false);
+  const [imageError, setImageError] = useState("");
+  const imageInputRef = useRef(null);
 
   // ── Personal Info ──────────────────────────────────────────────
   const [profile, setProfile] = useState({ name: "", email: "", phone: "" });
@@ -48,13 +55,13 @@ export default function Profile() {
   const [companyForm, setCompanyForm] = useState({
     company_name: "",
     website: "",
-    linkedin: "",    
+    linkedin: "",
     description: "",
   });
   const [savedCompanyForm, setSavedCompanyForm] = useState({
     company_name: "",
     website: "",
-    linkedin: "",  
+    linkedin: "",
     description: "",
   });
   const [companySaving, setCompanySaving] = useState(false);
@@ -103,6 +110,14 @@ export default function Profile() {
         setRole(data.user_role);
         setProfile({ name: data.fullname, email: data.email, phone: data.phone ?? "" });
         setPersonalForm({ fullname: data.fullname, phone: data.phone ?? "" });
+        
+        try {
+          const imgRes = await api.get("/profile/view-image", { responseType: "blob" });
+          setProfileImage(URL.createObjectURL(imgRes.data));
+        } catch {
+          setProfileImage(null);
+        }
+
 
         setLocationOptions(locRes.data.map((l) => ({ value: l.id, label: l.name })));
         setDomainOptions(domainRes.data.map((d) => ({ value: d.id, label: d.name })));
@@ -130,7 +145,7 @@ export default function Profile() {
           const initial = {
             company_name: rc.company_name ?? "",
             website: rc.website ?? "",
-            linkedin: rc.linkedin ?? "",    
+            linkedin: rc.linkedin ?? "",
             description: rc.description ?? "",
           };
           setCompanyForm(initial);
@@ -144,6 +159,64 @@ export default function Profile() {
     };
     fetchAll();
   }, []);
+
+  // ── Image Upload / Update ──────────────────────────────────────
+  const handleImageChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedExts = [".jpg", ".jpeg", ".png"];
+    const ext = "." + file.name.split(".").pop().toLowerCase();
+    if (!allowedExts.includes(ext)) {
+      setImageError("Only JPG, JPEG, or PNG files are allowed.");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setImageError("Image must be under 5MB.");
+      return;
+    }
+
+    setImageUploading(true);
+    setImageError("");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const endpoint = profileImage ? "/profile/update-image" : "/profile/upload-image";
+      const method = profileImage ? "put" : "post";
+      await api[method](endpoint, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const localUrl = URL.createObjectURL(file);
+      setProfileImage(localUrl);
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      setImageError(detail ?? "Image upload failed.");
+    } finally {
+      setImageUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
+  };
+
+
+  // ── Image Delete ───────────────────────────────────────────────
+const handleImageDelete = async () => {
+  if (!window.confirm("Remove profile photo? You'll go back to the default initial.")) return;
+
+  setImageUploading(true);
+  setImageError("");
+  try {
+    await api.delete("/profile/delete-image");
+    setProfileImage(null);
+  } catch (err) {
+    const detail = err.response?.data?.detail;
+    setImageError(detail ?? "Failed to remove image.");
+  } finally {
+    setImageUploading(false);
+  }
+};
 
   // ── Save Personal ──────────────────────────────────────────────
   const savePersonal = async () => {
@@ -221,7 +294,7 @@ export default function Profile() {
       await api.patch("/profile/company", {
         ...companyForm,
         website: companyForm.website?.trim() || null,
-        linkedin: companyForm.linkedin?.trim() || null,  
+        linkedin: companyForm.linkedin?.trim() || null,
       });
       setSavedCompanyForm({ ...companyForm });
       setCompanyEdit(false);
@@ -244,7 +317,6 @@ export default function Profile() {
     setCompanyError("");
     setCompanyEdit(false);
   };
-
 
   // ── Save Security ──────────────────────────────────────────────
   const saveSecurity = async () => {
@@ -270,7 +342,7 @@ export default function Profile() {
         new_pass: securityForm.newPassword,
         confirm_pass: securityForm.confirmPassword,
       });
-      
+
       setSecurityForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
       setSecurityEdit(false);
       setSecuritySuccess(true);
@@ -404,12 +476,52 @@ export default function Profile() {
         {/* Sidebar */}
         <div className="sidebar">
           <div className="sidebar-profile-mini">
-            <div className="avatar-lg">
-              <span>{profile.name?.charAt(0)?.toUpperCase() || "U"}</span>
+
+            {/* Avatar */}
+            <div
+              className="avatar-lg avatar-clickable"
+              onClick={() => !imageUploading && imageInputRef.current?.click()}
+              title="Click to change photo"
+            >
+              {profileImage ? (
+                <img src={profileImage} alt="Profile" className="avatar-img" />
+              ) : (
+                <span>{profile.name?.charAt(0)?.toUpperCase() || "U"}</span>
+              )}
+              <div className="avatar-overlay">
+                {imageUploading ? (
+                  <span className="avatar-overlay-text">…</span>
+                ) : (
+                  <MdCameraAlt size={20} color="white" />
+                )}
+              </div>
             </div>
+
+            {/* ── Delete image button ── */}
+            {profileImage && !imageUploading && (
+              <button className="avatar-delete-btn" onClick={handleImageDelete}>
+                Remove photo
+              </button>
+            )}
+
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept=".jpg,.jpeg,.png"
+              style={{ display: "none" }}
+              onChange={handleImageChange}
+            />
+
+            {imageError && (
+              <p className="msg msg--error" style={{ fontSize: "11px", textAlign: "center", marginTop: "6px" }}>
+                {imageError}
+              </p>
+            )}
+
             <p className="sidebar-name">{profile.name}</p>
             <p className="sidebar-role">{role === "jobseeker" ? "Job Seeker" : "Recruiter"}</p>
           </div>
+
           <nav className="sidebar-nav">
             <button
               className={`nav-item ${active === "personal" ? "nav-active" : ""}`}
@@ -632,15 +744,13 @@ export default function Profile() {
               <div className="upload-zone">
                 <div className="upload-zone-header">
                   <p className="upload-title">Resume</p>
-                  {hasResume && (
-                    <span className="resume-badge">Uploaded</span>
-                  )}
+                  {hasResume && <span className="resume-badge">Uploaded</span>}
                 </div>
 
                 {hasResume ? (
                   <div className="resume-existing">
                     <div className="resume-file-row">
-                      <span className="resume-filename"> resume.pdf</span>
+                      <span className="resume-filename">resume.pdf</span>
                     </div>
                     <div className="resume-actions">
                       <button
@@ -695,7 +805,7 @@ export default function Profile() {
                   onChange={handleResumeUpload}
                 />
 
-                {resumeError   && <p className="msg msg--error">{resumeError}</p>}
+                {resumeError && <p className="msg msg--error">{resumeError}</p>}
                 {resumeSuccess && <p className="msg msg--success">{resumeSuccess}</p>}
               </div>
             </div>
@@ -731,7 +841,7 @@ export default function Profile() {
                     <span className="field-label">Website</span>
                     <span className="field-value">{savedCompanyForm.website || "—"}</span>
                   </div>
-                  <div className="info-field">                       
+                  <div className="info-field">
                     <span className="field-label">LinkedIn</span>
                     <span className="field-value">{savedCompanyForm.linkedin || "—"}</span>
                   </div>
@@ -770,7 +880,7 @@ export default function Profile() {
                         }
                       />
                     </div>
-                    <div className="form-group">                       {}
+                    <div className="form-group">
                       <label className="form-label">LinkedIn</label>
                       <input
                         type="text"

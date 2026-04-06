@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException,status
+import os
+import shutil
+from fastapi import APIRouter,File,UploadFile, Depends, HTTPException,status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from sqlalchemy.exc import IntegrityError
 from app.models import User, JobSeekerProfile,RecruiterProfile,Location
 from .schemas import UserProfileResponse,PersonalInfoUpdate,CompanyInfoUpdate,JobSeekerPrefUpdate,PasswordChange
-from .utils import get_current_user_obj
+from .utils import get_current_user_obj,validate_image_extension,validate_image_size
 from app.utils import verify_password,hash_password
+
 
 
 router=APIRouter(prefix="/profile",tags=["Profile"])
@@ -173,3 +177,128 @@ def change_password(
     return {"message": "Password updated successfully"}
 
 
+# ─── Image Upload ────────────────────────────────────────────────────────────────────
+
+
+UPLOAD_IMAGE_DIR = "uploads/images"
+os.makedirs(UPLOAD_IMAGE_DIR, exist_ok=True)
+
+
+@router.post("/upload-image", status_code=status.HTTP_201_CREATED)
+async def upload_profile_image(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_obj),
+):
+    ext = validate_image_extension(file)
+    await validate_image_size(file)
+
+    if current_user.profile_image_path and os.path.exists(current_user.profile_image_path):
+        os.remove(current_user.profile_image_path)
+
+    file_path = os.path.join(UPLOAD_IMAGE_DIR, f"{current_user.user_id}{ext}")
+
+    file.file.seek(0)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    current_user.profile_image_path = file_path
+    db.commit()
+
+    return {
+        "message": "Profile image uploaded successfully.",
+        "image_path": file_path,
+    }
+
+
+# ─── Update ────────────────────────────────────────────────────────────────────
+
+@router.put("/update-image", status_code=status.HTTP_200_OK)
+async def update_profile_image(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_obj),
+):
+    ext = validate_image_extension(file)
+    await validate_image_size(file)
+
+    if not current_user.profile_image_path:
+        raise HTTPException(
+            status_code=404,
+            detail="No existing profile image found. Use /upload-image to add one.",
+        )
+
+    if os.path.exists(current_user.profile_image_path):
+        os.remove(current_user.profile_image_path)
+
+    file_path = os.path.join(UPLOAD_IMAGE_DIR, f"{current_user.user_id}{ext}")
+
+    file.file.seek(0)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    current_user.profile_image_path = file_path
+    db.commit()
+
+    return {
+        "message": "Profile image updated successfully.",
+        "image_path": file_path,
+    }
+
+@router.get("/view-image", status_code=status.HTTP_200_OK)
+async def view_profile_image(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_obj),
+):
+    if not current_user.profile_image_path:
+        raise HTTPException(
+            status_code=404,
+            detail="No profile image found for this user.",
+        )
+
+    file_path = current_user.profile_image_path
+
+    # ── Path traversal guard ───────────────────────────────────────
+    safe_dir = os.path.realpath(UPLOAD_IMAGE_DIR)
+    real_path = os.path.realpath(file_path)
+
+    if not real_path.startswith(safe_dir):
+        raise HTTPException(status_code=403, detail="Access denied.")
+
+    if not os.path.exists(real_path):
+        raise HTTPException(
+            status_code=404,
+            detail="Image file not found on server. Please re-upload.",
+        )
+
+    # ── Detect media type from extension ──────────────────────────
+    ext = os.path.splitext(real_path)[-1].lower()
+    media_type_map = {
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png": "image/png",
+    }
+    media_type = media_type_map.get(ext, "application/octet-stream")
+
+    return FileResponse(
+        path=real_path,
+        media_type=media_type,
+        headers={"Content-Disposition": "inline"},
+    )
+
+
+@router.delete("/delete-image", status_code=status.HTTP_200_OK)
+async def delete_profile_image(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user_obj),
+):
+    if not current_user.profile_image_path:
+        raise HTTPException(status_code=404, detail="No profile image found.")
+
+    if os.path.exists(current_user.profile_image_path):
+        os.remove(current_user.profile_image_path)
+
+    current_user.profile_image_path = None
+    db.commit()
+
+    return {"message": "Profile image deleted successfully."}
