@@ -101,7 +101,7 @@
  
 /* ── Details Toggle Button ───────────────────────────────────────── */
  
-.details-btn {
+.details-btn,.company-btn {
   background: transparent;
   color: var(--accent);
   border: 1.5px solid var(--accent-mid);

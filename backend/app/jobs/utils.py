@@ -32,7 +32,7 @@ def get_llm() -> ChatGoogleGenerativeAI:
 def get_embedding_model() -> SentenceTransformer:
     global _embedding_model
     if _embedding_model is None:
-        _embedding_model = SentenceTransformer("multi-qa-MiniLM-L6-cos-v1")
+        _embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
     return _embedding_model
 
 
@@ -70,10 +70,7 @@ Extract the key details and return the output strictly in valid JSON format.
 
 Instructions:
 
-1. "job_role":
-   - Extract the exact job title.
-
-2. "skills":
+1. "skills":
    - Extract all technical and relevant skills mentioned anywhere in the JD.
    - Normalize variations:
        * "python programming", "python3" → "python"
@@ -82,11 +79,8 @@ Instructions:
    - Return as a SPACE-SEPARATED string (no commas).
    - Example: "python java fastapi postgresql docker kubernetes"
 
-3. "education":
-   - Extract only the required education qualification.
-   - Example: "B.Tech in Computer Science or equivalent"
 
-4. "job_summary":
+2. "job_summary":
    - Write a dense 3-5 sentence paragraph that captures BOTH what the role does
      AND the domain/technical context the work demands.
    - Combine responsibilities and requirements into one coherent work description.
@@ -120,16 +114,14 @@ def extract_json(jd: str) -> dict:
     Extracts structured job data from a raw job description string.
 
     Returns a dict with keys:
-        - job_role
         - skills       (space-separated, no commas)
-        - education
         - job_summary  (rich combined responsibilities + domain context)
     """
     prompt = PromptTemplate.from_template(template)
     chain = prompt | get_llm() | JsonOutputParser()
     extracted: dict = chain.invoke({"jd": jd})
 
-    required_keys = {"job_role", "skills", "job_summary"}
+    required_keys = {"skills", "job_summary"}
     missing_keys = required_keys - set(extracted.keys())
     if missing_keys:
         raise HTTPException(

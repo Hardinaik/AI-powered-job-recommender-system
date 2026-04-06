@@ -15,14 +15,12 @@ def get_profile(
     db: Session = Depends(get_db),
     user_obj: User = Depends(get_current_user_obj)
 ):
-    # 1. Fetch user with all relationships
     user = db.query(User).options(
         joinedload(User.jobseeker_profile).joinedload(JobSeekerProfile.preferred_domain),
         joinedload(User.preferred_locations),
         joinedload(User.recruiter_profile)  
     ).filter(User.user_id == user_obj.user_id).first()
 
-    # 2. Base Data (Phone is directly on 'user')
     result = {
         "fullname": user.fullname,
         "email": user.email,
@@ -32,7 +30,6 @@ def get_profile(
         "recruiter_details": None
     }
 
-    # 3. Role-Specific Logic
     if user.user_role == "jobseeker":
         profile = user.jobseeker_profile
         result["jobseeker_details"] = {
@@ -50,6 +47,7 @@ def get_profile(
         result["recruiter_details"] = {
             "company_name": profile.company_name if profile else None,
             "website": profile.website if profile else None,
+            "linkedin": profile.linkedin if profile else None,
             "description": profile.description if profile else None
         }
 
@@ -62,7 +60,6 @@ def update_personal_info(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user_obj)
 ):
-    # 1. Update User table directly
     if payload.fullname is not None:
         user.fullname = payload.fullname
     
@@ -74,7 +71,6 @@ def update_personal_info(
         return {"message": "Personal information updated successfully"}
     except IntegrityError:
         db.rollback()
-        # This handles the 'UNIQUE' constraint on the phone column
         raise HTTPException(
             status_code=400, 
             detail="This phone number is already in use by another account."
@@ -82,8 +78,6 @@ def update_personal_info(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail="Internal server error")
-    
-
 
 
 @router.patch("/preferences")
@@ -92,7 +86,6 @@ def update_job_preferences(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user_obj)
 ):
-    # 1. Role Security
     if user.user_role != "jobseeker":
         raise HTTPException(
             status_code=403, 
@@ -100,7 +93,6 @@ def update_job_preferences(
         )
 
     try:
-        # 2. Update JobSeekerProfile table (Upsert logic)
         profile = user.jobseeker_profile
         if not profile:
             profile = JobSeekerProfile(user_id=user.user_id)
@@ -112,13 +104,8 @@ def update_job_preferences(
         if payload.preferred_domain_id is not None:
             profile.preferred_domain_id = payload.preferred_domain_id
 
-        # 3. Sync Many-to-Many Locations
         if payload.location_ids is not None:
-            # Fetch the actual Location objects from the database for the given IDs
             new_locations = db.query(Location).filter(Location.id.in_(payload.location_ids)).all()
-            
-            # SQLAlchemy handles the junction table (jobseeker_preferred_locations)
-            # automatically. Setting the list replaces all old entries with new ones.
             user.preferred_locations = new_locations
 
         db.commit()
@@ -126,7 +113,6 @@ def update_job_preferences(
 
     except Exception as e:
         db.rollback()
-        # Log the error 'e' here for debugging
         raise HTTPException(status_code=500, detail="Failed to update preferences")
     
 
@@ -136,7 +122,6 @@ def update_company_details(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user_obj)
 ):
-    # 1. Role Authorization
     if user.user_role != "recruiter":
         raise HTTPException(
             status_code=403, 
@@ -144,23 +129,23 @@ def update_company_details(
         )
 
     try:
-        # 2. Fetch existing profile or initialize a new one (Upsert)
         profile = user.recruiter_profile
         if not profile:
             profile = RecruiterProfile(user_id=user.user_id)
             db.add(profile)
 
-        # 3. Apply updates for provided fields
         if payload.company_name is not None:
             profile.company_name = payload.company_name
             
         if payload.website is not None:
             profile.website = payload.website
+
+        if payload.linkedin is not None:       
+            profile.linkedin = payload.linkedin  
             
         if payload.description is not None:
             profile.description = payload.description
 
-        # 4. Save to Database
         db.commit()
         return {"message": "Company details updated successfully"}
 
@@ -173,18 +158,18 @@ def update_company_details(
 def change_password(
     payload: PasswordChange,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_obj)  # already a User object
+    current_user: User = Depends(get_current_user_obj)
 ):
-    # 1. Verify current password
     if not verify_password(payload.current_pass, current_user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect"
         )
 
-    # 2. Hash and save new password
     current_user.password_hash = hash_password(payload.new_pass)
     db.commit()
     db.refresh(current_user)
 
     return {"message": "Password updated successfully"}
+
+

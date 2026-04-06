@@ -126,7 +126,7 @@ body {
 /* ── Filters Sidebar ─────────────────────────────────────────────── */
  
 .filters {
-  width: 262px;
+  width: 300px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -201,26 +201,17 @@ body {
   box-shadow: 0 0 0 3px rgba(59, 110, 246, 0.1);
   background: white;
 }
- 
-/* ── Resume Upload ───────────────────────────────────────────────── */
- 
-.old-resume-checkbox {
+
+/* recomand using profile _______*/
+
+.profile-rec-checkbox {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 10px;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--text-secondary);
-  font-weight: 500;
+  gap: 8px; 
 }
  
-.old-resume-checkbox input {
-  cursor: pointer;
-  width: 15px;
-  height: 15px;
-  accent-color: var(--accent);
-}
+/* ── Resume Upload ───────────────────────────────────────────────── */
+
  
 .upload-box {
   border: 2px dashed var(--border);

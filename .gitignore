@@ -7,4 +7,4 @@ frontend/node_modules/
 *.pdf
 *.csv
 uploads/
-databasescript.txt
+*.txt

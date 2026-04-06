@@ -1,0 +1,298 @@
+/* ── Overlay ─────────────────────────────────────────────────────── */
+
+.company-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+  animation: overlay-fade-in 0.18s ease;
+}
+
+@keyframes overlay-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Modal ───────────────────────────────────────────────────────── */
+
+.company-modal {
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  width: 100%;
+  max-width: 460px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  animation: modal-slide-in 0.22s ease;
+  overflow: hidden;
+}
+
+@keyframes modal-slide-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+
+/* ── Header ──────────────────────────────────────────────────────── */
+
+.company-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px 22px 18px;
+}
+
+.company-avatar {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-light);
+  border: 1.5px solid var(--accent-mid);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 700;
+  font-family: var(--font-heading);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.04em;
+}
+
+.company-modal-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.company-modal-title h2 {
+  margin: 0 0 3px;
+  font-size: 16px;
+  font-weight: 700;
+  font-family: var(--font-heading);
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.company-modal-subtitle {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* ── Close Button ────────────────────────────────────────────────── */
+
+.company-close-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.18s ease;
+}
+
+.company-close-btn:hover {
+  background: var(--accent-light);
+  border-color: var(--accent-mid);
+  color: var(--accent);
+}
+
+/* ── Divider ─────────────────────────────────────────────────────── */
+
+.company-modal-divider {
+  height: 1px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* ── Body ────────────────────────────────────────────────────────── */
+
+.company-modal-body {
+  padding: 20px 22px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+/* ── Sections ────────────────────────────────────────────────────── */
+
+.company-section {
+  margin-bottom: 20px;
+}
+
+.company-section:last-child {
+  margin-bottom: 0;
+}
+
+.company-section-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 8px;
+}
+
+.company-section-text {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+/* ── Links ───────────────────────────────────────────────────────── */
+
+.company-links {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.company-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--accent-mid);
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  text-decoration: none;
+  transition: all 0.18s ease;
+}
+
+.company-link:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.company-link--linkedin {
+  border-color: #c0d4f0;
+  background: #edf3fc;
+  color: #0a66c2;
+}
+
+.company-link--linkedin:hover {
+  background: #0a66c2;
+  border-color: #0a66c2;
+  color: white;
+}
+
+.company-link-icon {
+  font-size: 13px;
+}
+
+/* ── States (loading / error / empty) ───────────────────────────── */
+
+.company-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 0;
+  gap: 12px;
+  color: var(--text-muted);
+}
+
+.company-state p {
+  margin: 0;
+  font-size: 13.5px;
+  text-align: center;
+}
+
+.company-state-icon {
+  font-size: 28px;
+  opacity: 0.35;
+}
+
+/* Spinner */
+
+.company-spinner {
+  width: 26px;
+  height: 26px;
+  border: 2.5px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Company Info Button (in JobCard footer) ─────────────────────── */
+
+.company-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.company-btn:hover {
+  background: var(--accent-light);
+  border-color: var(--accent-mid);
+  color: var(--accent);
+}
+
+.company-btn-icon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  .company-modal {
+    max-width: 100%;
+    max-height: 88vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    align-self: flex-end;
+    margin: auto 0 0;
+    animation: modal-slide-up 0.24s ease;
+  }
+
+  @keyframes modal-slide-up {
+    from { opacity: 0; transform: translateY(100%); }
+    to   { opacity: 1; transform: translateY(0);    }
+  }
+
+  .company-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+
+  .company-btn {
+    padding: 7px 10px;
+    font-size: 12px;
+  }
+}

@@ -91,6 +91,12 @@ function JobListPage() {
   const handleStatusChange = (jobId, type) => {
     if (type === "save") {
       setSavedJobIds((prev) => [...new Set([...prev, jobId])]);
+    } else if (type === "unsave") {
+      setSavedJobIds((prev) => prev.filter((id) => id !== jobId));
+      // Remove card immediately if currently viewing Saved Jobs tab
+      if (view === "saved") {
+        setJobs((prev) => prev.filter((job) => job.job_id !== jobId));
+      }
     } else if (type === "apply") {
       setAppliedJobIds((prev) => [...new Set([...prev, jobId])]);
     }

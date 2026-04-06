@@ -1,6 +1,6 @@
 
 from pydantic import BaseModel
-from typing import List
+from typing import List,Optional
 from uuid import UUID
 
 
@@ -19,3 +19,9 @@ class JobResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+class ShowCompanyDetails(BaseModel):
+    company_name: Optional[str] = None
+    website: Optional[str] = None
+    linkedin: Optional[str] = None
+    description: Optional[str] = None

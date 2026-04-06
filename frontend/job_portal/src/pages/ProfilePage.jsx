@@ -48,11 +48,13 @@ export default function Profile() {
   const [companyForm, setCompanyForm] = useState({
     company_name: "",
     website: "",
+    linkedin: "",    
     description: "",
   });
   const [savedCompanyForm, setSavedCompanyForm] = useState({
     company_name: "",
     website: "",
+    linkedin: "",  
     description: "",
   });
   const [companySaving, setCompanySaving] = useState(false);
@@ -115,7 +117,6 @@ export default function Profile() {
           setPrefForm(initial);
           setSavedPrefForm({ ...initial, location_ids: [...initial.location_ids] });
 
-          // ── Fetch resume status only for jobseekers ──
           try {
             const resumeRes = await api.get("/resume/status");
             setHasResume(resumeRes.data.has_resume);
@@ -129,6 +130,7 @@ export default function Profile() {
           const initial = {
             company_name: rc.company_name ?? "",
             website: rc.website ?? "",
+            linkedin: rc.linkedin ?? "",    
             description: rc.description ?? "",
           };
           setCompanyForm(initial);
@@ -219,6 +221,7 @@ export default function Profile() {
       await api.patch("/profile/company", {
         ...companyForm,
         website: companyForm.website?.trim() || null,
+        linkedin: companyForm.linkedin?.trim() || null,  
       });
       setSavedCompanyForm({ ...companyForm });
       setCompanyEdit(false);
@@ -241,6 +244,7 @@ export default function Profile() {
     setCompanyError("");
     setCompanyEdit(false);
   };
+
 
   // ── Save Security ──────────────────────────────────────────────
   const saveSecurity = async () => {
@@ -266,6 +270,7 @@ export default function Profile() {
         new_pass: securityForm.newPassword,
         confirm_pass: securityForm.confirmPassword,
       });
+      
       setSecurityForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
       setSecurityEdit(false);
       setSecuritySuccess(true);
@@ -310,7 +315,6 @@ export default function Profile() {
     const formData = new FormData();
     formData.append("file", file);
 
-    // After 800ms assume file is saved, now embedding pipeline is running
     const processingTimer = setTimeout(() => setResumeProcessing(true), 800);
 
     try {
@@ -359,7 +363,6 @@ export default function Profile() {
     setResumeViewing(true);
     setResumeError("");
     try {
-      // Fetch as blob — keeps auth header, avoids window.open auth bypass
       const res = await api.get("/resume/view", { responseType: "blob" });
       const blobUrl = URL.createObjectURL(res.data);
       window.open(blobUrl, "_blank");
@@ -637,7 +640,7 @@ export default function Profile() {
                 {hasResume ? (
                   <div className="resume-existing">
                     <div className="resume-file-row">
-                      <span className="resume-filename">📄 resume.pdf</span>
+                      <span className="resume-filename"> resume.pdf</span>
                     </div>
                     <div className="resume-actions">
                       <button
@@ -717,6 +720,7 @@ export default function Profile() {
 
               <div className="card-divider" />
 
+              {/* ── View Mode ── */}
               {!companyEdit && (
                 <div className="info-grid">
                   <div className="info-field">
@@ -727,6 +731,10 @@ export default function Profile() {
                     <span className="field-label">Website</span>
                     <span className="field-value">{savedCompanyForm.website || "—"}</span>
                   </div>
+                  <div className="info-field">                       
+                    <span className="field-label">LinkedIn</span>
+                    <span className="field-value">{savedCompanyForm.linkedin || "—"}</span>
+                  </div>
                   <div className="info-field info-field--full">
                     <span className="field-label">Description</span>
                     <span className="field-value">{savedCompanyForm.description || "—"}</span>
@@ -734,6 +742,7 @@ export default function Profile() {
                 </div>
               )}
 
+              {/* ── Edit Mode ── */}
               {companyEdit && (
                 <div className="edit-section">
                   <div className="form-row form-row--2col">
@@ -758,6 +767,18 @@ export default function Profile() {
                         value={companyForm.website}
                         onChange={(e) =>
                           setCompanyForm({ ...companyForm, website: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="form-group">                       {}
+                      <label className="form-label">LinkedIn</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="https://www.linkedin.com/company/companyname"
+                        value={companyForm.linkedin}
+                        onChange={(e) =>
+                          setCompanyForm({ ...companyForm, linkedin: e.target.value })
                         }
                       />
                     </div>

@@ -27,5 +27,6 @@ pydantic[email]
 
 sentence-transformers
 pgvector
+rank-bm25
 
 

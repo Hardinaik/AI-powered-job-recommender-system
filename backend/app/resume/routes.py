@@ -19,7 +19,6 @@ router = APIRouter(prefix="/resume", tags=["Resume"])
 UPLOAD_DIR = "uploads/resumes"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_resume(
     file: UploadFile = File(...),
@@ -47,7 +46,7 @@ async def upload_resume(
         shutil.copyfileobj(file.file, buffer)
 
     try:
-        skill_embedding, work_embedding,project_embedding = create_resume_embedding(file_path)
+        resume_text,skill_embedding, work_embedding, project_embedding = create_resume_embedding(file_path)
     except Exception as e:
         if os.path.exists(file_path):
             os.remove(file_path)
@@ -58,15 +57,18 @@ async def upload_resume(
 
     if existing_resume:
         existing_resume.resume_url = file_path
+        existing_resume.resume_text=resume_text
         existing_resume.skill_embedding = skill_embedding
-        existing_resume.resume_embedding = work_embedding
+        existing_resume.work_embedding = work_embedding      
+        existing_resume.project_embedding = project_embedding
     else:
         new_resume = Resume(
             user_id=user_id,
             resume_url=file_path,
+            resume_text=resume_text,
             skill_embedding=skill_embedding,
             work_embedding=work_embedding,
-            project_embedding=project_embedding
+            project_embedding=project_embedding,
         )
         db.add(new_resume)
 
@@ -74,7 +76,7 @@ async def upload_resume(
 
     return {
         "message": "Resume uploaded successfully.",
-        "resume_url": f"/resume/view",
+        "resume_url": "/resume/view",
     }
 
 

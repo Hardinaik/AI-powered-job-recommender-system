@@ -28,6 +28,7 @@ class User(Base):
     password_hash = Column(Text, nullable=False)
     phone = Column(Text, unique=True, nullable=True)
     user_role = Column(Text, nullable=False)
+    profile_image_path=Column(Text,unique=True)
 
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
@@ -65,10 +66,11 @@ class Resume(Base):
 
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
 
-    resume_url = Column(Text)
-    work_embedding = Column(Vector(384), nullable=False)
+    resume_url = Column(Text,unique=True)
+    resume_text=Column(Text,nullable=False)
+    work_embedding = Column(Vector(384))
     skill_embedding = Column(Vector(384), nullable=False)
-    project_embedding=Column(Vector(384), nullable=False)
+    project_embedding=Column(Vector(384))
 
     updated_at = Column(
         TIMESTAMP(timezone=True),
@@ -207,6 +209,7 @@ class RecruiterProfile(Base):
     
     company_name = Column(Text)
     website = Column(Text)
+    linkedin=Column(Text)
     description = Column(Text)
 
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
