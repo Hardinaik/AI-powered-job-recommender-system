@@ -1,12 +1,12 @@
-import os
-from dotenv import load_dotenv
+
+from app.config import settings
 from fastapi import HTTPException
 from langchain_core.prompts import PromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.output_parsers import JsonOutputParser
 from sentence_transformers import SentenceTransformer
 
-load_dotenv()
+
 
 # ---------------------------------------------------------------------------
 # Lazy singletons
@@ -18,7 +18,7 @@ _llm = None
 def get_llm() -> ChatGoogleGenerativeAI:
     global _llm
     if _llm is None:
-        api_key = os.getenv("API_KEY")
+        api_key = settings.API_KEY
         if not api_key:
             raise RuntimeError("API_KEY environment variable is not set.")
         _llm = ChatGoogleGenerativeAI(

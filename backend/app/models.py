@@ -1,5 +1,5 @@
 from sqlalchemy import (
-    Column, Text, Integer, String, TIMESTAMP,
+    Column, Text, Integer, String, Boolean,TIMESTAMP,
     ForeignKey, CheckConstraint
 )
 from sqlalchemy.dialects.postgresql import UUID
@@ -228,3 +228,26 @@ class JobSeekerPreferredLocation(Base):
 
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
     location_id = Column(Integer, ForeignKey("locations.id", ondelete="CASCADE"), primary_key=True)
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    # Use UUID to match your User table style
+    id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
+    
+    # Link to your User table using the correct ID column name
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    
+    # Store the HASH of the token, not the token itself
+    token_hash = Column(Text, unique=True, nullable=False)
+    
+    # Timing logic
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    expires_at = Column(TIMESTAMP(timezone=True), nullable=False)
+    
+    # Status
+    used = Column(Boolean, default=False)
+
+    # Relationship (Optional, but helpful)
+    user = relationship("User")

@@ -1,17 +1,16 @@
-import os
-from dotenv import load_dotenv
+from app.config import settings
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 from urllib.parse import quote_plus
-from pathlib import Path
 
-load_dotenv()
 
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = quote_plus(os.getenv("DB_PASSWORD"))  
-DB_HOST = os.getenv("DB_HOST")
-DB_PORT = os.getenv("DB_PORT")
-DB_NAME = os.getenv("DB_NAME")
+
+DB_USER = settings.DB_USER
+DB_PASSWORD = quote_plus(settings.DB_PASSWORD)  
+DB_HOST = settings.DB_HOST
+DB_PORT = settings.DB_PORT
+DB_NAME = settings.DB_NAME
 
 DATABASE_URL = (
     f"postgresql://{DB_USER}:{DB_PASSWORD}"

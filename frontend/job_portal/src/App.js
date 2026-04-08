@@ -3,14 +3,11 @@ import HomePage from "./pages/HomePage";
 import JobListPage from "./pages/JobListPage";
 import RecruiterDashBoard from "./pages/RecruiterDashBoard";
 import Profile from "./pages/ProfilePage";
+import ResetPassword from "./components/auth/ResetPassword"; 
 
-
-// Helper: Redirects to "/" if no token is found
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");
-  if (!token) {
-    return <Navigate to="/" replace />;
-  }
+  if (!token) return <Navigate to="/" replace />;
   return children;
 };
 
@@ -20,22 +17,14 @@ function App() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<HomePage />} />
-        
-        {/* Protected Routes */}
-        <Route 
-          path="/joblist" 
-          element={<ProtectedRoute><JobListPage /></ProtectedRoute>} 
-        />
-        <Route 
-          path="/recruiter-dashboard" 
-          element={<ProtectedRoute><RecruiterDashBoard /></ProtectedRoute>} 
-        />
-        <Route 
-          path="/profile" 
-          element={<ProtectedRoute><Profile /></ProtectedRoute>} 
-        />
+        <Route path="/reset-password" element={<ResetPassword />} /> 
 
-        {/* Fallback: Any unknown route goes to Home */}
+        {/* Protected Routes */}
+        <Route path="/joblist" element={<ProtectedRoute><JobListPage /></ProtectedRoute>} />
+        <Route path="/recruiter-dashboard" element={<ProtectedRoute><RecruiterDashBoard /></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+
+        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
