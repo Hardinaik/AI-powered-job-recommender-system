@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Application Confirmed</title>
+</head>
+
+<body style="margin:0;padding:0;background-color:#F3F4F6;font-family:'Segoe UI',Arial,sans-serif;">
+
+<table width="100%" cellpadding="0" cellspacing="0" border="0"
+       style="background-color:#F3F4F6;padding:40px 0;">
+  <tr>
+    <td align="center">
+
+      <!-- Outer card -->
+      <table width="600" cellpadding="0" cellspacing="0" border="0"
+             style="background-color:#ffffff;border-radius:12px;border:1px solid #E5E7EB;">
+
+        <!-- ═══ HEADER ═══
+             bgcolor attr = Gmail mobile fallback.
+             Emoji removed — replaced with a plain-text Unicode check that
+             renders safely across all email clients.                       -->
+        <tr>
+          <td align="center" bgcolor="#059669"
+              style="background-color:#059669;
+                     background-image:linear-gradient(135deg,#059669,#0D9488);
+                     padding:40px;border-radius:12px 12px 0 0;">
+
+            <!-- Checkmark circle: built with a table cell so no image dependency -->
+            <table cellpadding="0" cellspacing="0" border="0" align="center">
+              <tr>
+                <td align="center" valign="middle"
+                    style="width:64px;height:64px;border-radius:50%;
+                           background-color:rgba(255,255,255,0.2);
+                           font-size:32px;color:#ffffff;font-weight:700;
+                           line-height:64px;">
+                  &#10003;
+                </td>
+              </tr>
+            </table>
+
+            <h1 style="margin:12px 0 0;color:#ffffff;font-size:22px;font-weight:700;">
+              Application Submitted!
+            </h1>
+            <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">
+              You&#39;re one step closer to your next role.
+            </p>
+          </td>
+        </tr>
+
+        <!-- ═══ BODY ═══ -->
+        <tr>
+          <td style="padding:32px 40px;">
+
+            <p style="margin:0;font-size:15px;color:#374151;">
+              Hi <strong>{{ applicant_name }}</strong>,
+            </p>
+            <p style="margin:12px 0 20px;font-size:14px;color:#6B7280;line-height:1.7;">
+              Your application has been successfully submitted. The recruiter will
+              review your profile and reach out if there&#39;s a match. Good luck!
+            </p>
+
+            <!-- Job card — border via table attributes, no box-shadow -->
+            <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                   bgcolor="#F0FDF4"
+                   style="background-color:#F0FDF4;border:1px solid #6EE7B7;
+                          border-radius:10px;">
+              <tr>
+                <td style="padding:20px 24px;">
+
+                  <p style="margin:0 0 4px;font-size:11px;color:#059669;
+                             font-weight:600;text-transform:uppercase;letter-spacing:1px;">
+                    Applied For
+                  </p>
+                  <p style="margin:0;font-size:20px;font-weight:700;color:#111827;">
+                    {{ job_title }}
+                  </p>
+                  <p style="margin:4px 0 8px;font-size:14px;color:#6B7280;">
+                    @ {{ company_name }}
+                  </p>
+                  <p style="margin:0;font-size:12px;color:#9CA3AF;">
+                    Job ID:&#160;
+                    <span style="background-color:#D1FAE5;padding:2px 8px;
+                                 border-radius:4px;color:#065F46;
+                                 font-family:monospace;">
+                      {{ job_id }}
+                    </span>
+                  </p>
+
+                </td>
+              </tr>
+            </table>
+
+            <p style="margin:20px 0 0;font-size:13px;color:#9CA3AF;line-height:1.6;">
+              <em>Keep your resume and profile up to date to improve your chances
+              with future applications.</em>
+            </p>
+
+          </td>
+        </tr>
+
+        <!-- ═══ FOOTER ═══ -->
+        <tr>
+          <td bgcolor="#F9FAFB"
+              style="background-color:#F9FAFB;padding:18px 40px;
+                     border-top:1px solid #E5E7EB;border-radius:0 0 12px 12px;">
+            <p style="margin:0;font-size:12px;color:#9CA3AF;text-align:center;">
+              Automated confirmation from <strong>JobBoard</strong>
+              &#183; No action needed
+            </p>
+          </td>
+        </tr>
+
+      </table><!-- /card -->
+    </td>
+  </tr>
+</table>
+
+</body>
+</html>

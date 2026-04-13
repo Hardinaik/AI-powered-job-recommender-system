@@ -1,5 +1,5 @@
 import { useState } from "react";
-import axios from "axios";
+import api from "../../api/axios";
 
 export default function ForgotPassword({ onClose }) {
   const [email, setEmail] = useState("");
@@ -10,7 +10,7 @@ export default function ForgotPassword({ onClose }) {
     e.preventDefault();
     setLoading(true);
     try {
-      await axios.post("/auth/passwords/forgot-password", { email });
+      await api.post("/auth/passwords/forgot-password", { email });
     } catch (_) {
       // Silently ignore — prevents email enumeration
     } finally {

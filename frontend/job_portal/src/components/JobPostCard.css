@@ -56,6 +56,14 @@
   border-radius: 20px;
 }
 
+.jpc-badge--id {
+  background: #f8faff;
+  color: #4F46E5;
+  border: 1px solid #c7d2fe;
+  font-family: monospace;
+  letter-spacing: 0.04em;
+}
+
 .jpc-badge--location {
   background: var(--accent-light);
   color: var(--accent);

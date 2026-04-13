@@ -1,15 +1,15 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from config import settings
+from app.config import settings
 from app.models import User, PasswordResetToken
-from schemas import ForgotPasswordRequest, ResetPasswordRequest
-from utils import _create_reset_token, _hash_token, _verify_reset_token
+from .schemas import ForgotPasswordRequest, ResetPasswordRequest
+from .utils import _create_reset_token, _hash_token, _verify_reset_token
 from app.services.email_services import send_reset_email
 from app.database import get_db
 from app.utils import hash_password 
 
-router = APIRouter(prefix="/passwords", tags=["Reset Password"])
+router = APIRouter(prefix="/auth/passwords", tags=["Reset Password"])
 
 
 @router.post("/forgot-password")

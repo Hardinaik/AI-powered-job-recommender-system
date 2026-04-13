@@ -1,7 +1,7 @@
 from jose import JWTError, jwt
 import hashlib
 from datetime import datetime, timedelta
-from config import settings
+from app.config import settings
 from fastapi import HTTPException
 
 def _hash_token(token: str) -> str:

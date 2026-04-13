@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { FaBookmark, FaBuilding } from "react-icons/fa";
 import api from "../api/axios";
 import CompanyCard from "./CompanyCard";
+import ApplyModal from "./ApplyModal";       
 import "./jobCard.css";
 
 function JobCard({ job, isSaved, isApplied, onStatusChange }) {
@@ -9,6 +10,7 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
   const [saved, setSaved] = useState(isSaved);
   const [applied, setApplied] = useState(isApplied);
   const [showCompany, setShowCompany] = useState(false);
+  const [showApplyModal, setShowApplyModal] = useState(false);  
 
   useEffect(() => { setSaved(isSaved); }, [isSaved]);
   useEffect(() => { setApplied(isApplied); }, [isApplied]);
@@ -43,20 +45,17 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
     }
   };
 
-  const handleApplyJob = async () => {
+  // Opens the modal instead of directly calling the API
+  const handleApplyClick = () => {
     if (applied) return;
-    try {
-      await api.post(`/applications/jobs/${job.job_id}/apply`);
-      setApplied(true);
-      if (onStatusChange) onStatusChange(job.job_id, "apply");
-    } catch (error) {
-      if (error.response?.status === 409) {
-        setApplied(true);
-        if (onStatusChange) onStatusChange(job.job_id, "apply");
-      } else {
-        alert(error.response?.data?.detail || "Failed to apply");
-      }
-    }
+    setShowApplyModal(true);
+  };
+
+  // Called by ApplyModal after successful submission
+  const handleApplied = (jobId) => {
+    setApplied(true);
+    setShowApplyModal(false);
+    if (onStatusChange) onStatusChange(jobId, "apply");
   };
 
   return (
@@ -97,7 +96,7 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
         <div className="job-card-footer">
           <button
             className={`apply-btn ${applied ? "applied" : ""}`}
-            onClick={handleApplyJob}
+            onClick={handleApplyClick}
             disabled={applied}
           >
             {applied ? "Applied" : "Apply Now"}
@@ -123,6 +122,15 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
         </div>
 
       </div>
+
+      {/* Apply Modal */}
+      {showApplyModal && (
+        <ApplyModal
+          job={job}
+          onClose={() => setShowApplyModal(false)}
+          onApplied={handleApplied}
+        />
+      )}
 
       {/* Company Details Modal */}
       {showCompany && (

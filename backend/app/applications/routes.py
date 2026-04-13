@@ -64,27 +64,6 @@ def unsave_job(
         message="Job unsaved successfully"
     )
 
-@router.post("/jobs/{job_id}/apply", response_model=UUID)
-def apply_job(
-    job_id: UUID,
-    db: Session = Depends(get_db),
-    current_user: dict = Depends(get_current_jobseeker)
-):
-    job = db.query(Job).filter(Job.job_id == job_id).first()
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found")
-
-    application = Application(job_seeker_id=current_user["user_id"], job_id=job_id)
-    try:
-        db.add(application)
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="Already applied to this job")
-
-    return job_id
-
-
 # --- STATE PERSISTENCE (GET IDs ONLY) ---
 # Use these for highlighting buttons on the main list
 
@@ -181,3 +160,25 @@ def get_company_details(
         linkedin=profile.linkedin,
         description=profile.description
     )
+
+
+@router.post("/jobs/{job_id}/apply", response_model=UUID)
+def apply_job(
+    job_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_jobseeker)
+):
+    job = db.query(Job).filter(Job.job_id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    application = Application(job_seeker_id=current_user["user_id"], job_id=job_id)
+    try:
+        db.add(application)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Already applied to this job")
+
+    return job_id
+

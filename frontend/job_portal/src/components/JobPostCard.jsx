@@ -9,6 +9,11 @@ const JobPostCard = ({ job, isExpanded, onToggle, onDelete }) => {
         <div className="jpc-meta">
           <h3 className="jpc-title">{job.job_title}</h3>
           <div className="jpc-tags">
+
+              <span className="jpc-badge jpc-badge--id">
+                #{job.job_id.toString()}
+              </span>
+
             {job.locations && job.locations.length > 0 ? (
               job.locations.map((loc, i) => (
                 <span key={i} className="jpc-badge jpc-badge--location">
