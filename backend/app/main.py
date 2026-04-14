@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.auth.routes import router as auth_router
@@ -8,9 +9,17 @@ from app.profile.routes import router as profile_router
 from app.resume.routes import router as resume_router
 from app.auth.passwords.routes import router as reset_pass_router
 from app.notifications.routes import router as notification_router
+from app.modelregistry import preload_models, cleanup_models
 
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    preload_models()       # runs on startup
+    yield
+    cleanup_models()
+
+
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -28,6 +37,7 @@ app.include_router(profile_router)
 app.include_router(resume_router)
 app.include_router(reset_pass_router)
 app.include_router(notification_router)
+
 
 @app.get("/")
 def root():

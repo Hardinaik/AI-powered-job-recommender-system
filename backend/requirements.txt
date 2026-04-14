@@ -5,7 +5,7 @@ uvicorn[standard]
 # AI & LLM
 langchain
 langchain-community
-langchain-google-genai
+langchain-groq
 pymupdf
 
 # Database (SQLAlchemy + Async support)

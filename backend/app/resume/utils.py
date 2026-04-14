@@ -1,40 +1,11 @@
 import re
-from app.config import settings
 from fastapi import HTTPException, UploadFile
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_core.prompts import PromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.output_parsers import JsonOutputParser
-from sentence_transformers import SentenceTransformer
- 
-
+from app.modelregistry import get_llm, get_embedding_model
  
 MAX_FILE_SIZE = 5 * 1024 * 1024
- 
-_embedding_model = None
-_llm = None
- 
- 
-def get_llm() -> ChatGoogleGenerativeAI:
-    global _llm
-    if _llm is None:
-        api_key = settings.API_KEY
-        if not api_key:
-            raise RuntimeError("API_KEY environment variable is not set.")
-        _llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
-            temperature=0,
-            google_api_key=api_key,
-        )
-    return _llm
- 
- 
-def get_embedding_model() -> SentenceTransformer:
-    global _embedding_model
-    if _embedding_model is None:
-        _embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
-    return _embedding_model
- 
  
 # ---------------------------------------------------------------------------
 # Validation

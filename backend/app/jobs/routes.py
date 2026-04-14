@@ -42,9 +42,15 @@ def create_job(
             detail="One or more location_ids are invalid"
         )
 
-    # Generate embeddings
-    skill_embedding , job_embedding = create_job_embedding(job.job_description)
 
+    try:
+        skill_embedding, job_embedding = create_job_embedding(job.job_description)
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail="Embedding service temporarily unavailable"
+        )
+   
     new_job = Job(
         job_title=job.job_title,
         company_name=job.company_name,
