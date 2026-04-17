@@ -1,6 +1,8 @@
 import os
 import shutil
 
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
@@ -39,7 +41,8 @@ async def upload_resume(
         if os.path.exists(old_path):
             os.remove(old_path)
 
-    file_path = os.path.join(UPLOAD_DIR, f"{user_id}.pdf")
+    file_path = Path(UPLOAD_DIR) / f"{user_id}.pdf"
+    
 
     file.file.seek(0)
     with open(file_path, "wb") as buffer:
@@ -64,7 +67,7 @@ async def upload_resume(
     else:
         new_resume = Resume(
             user_id=user_id,
-            resume_url=file_path,
+            resume_url=file_path.as_posix(),
             resume_text=resume_text,
             skill_embedding=skill_embedding,
             work_embedding=work_embedding,
