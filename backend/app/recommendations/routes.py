@@ -20,24 +20,14 @@ from app.utils import get_current_jobseeker
 router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
 
 # Constants
-
-# BM25 hyperparameters (passed directly to BM25Okapi)
-# k1 = 1.5  — term-frequency saturation; 1.2–2.0 is standard.
-#             1.5 suits technical JDs with moderate keyword repetition.
-# b  = 0.75 — length normalisation; canonical default.
-#             Prevents very short JDs from dominating purely by density.
 BM25_K1: float = 1.5
 BM25_B:  float = 0.75
-
-RRF_K: int = 10
-
-CANDIDATE_MULTIPLIER: int = 10
+RRF_K:   int   = 10
 
 
-# Section 1 — BM25  (via rank_bm25)
+# Section 1 — BM25
 
 def _tokenize(text: str) -> list[str]:
-    """Lowercase, strip punctuation, split on whitespace."""
     text = text.lower()
     text = "".join(ch if ch.isalnum() or ch.isspace() else " " for ch in text)
     return [t for t in text.split() if len(t) > 1]
@@ -45,12 +35,8 @@ def _tokenize(text: str) -> list[str]:
 
 def _rank_by_bm25(
     query_text: str,
-    jobs: list[Job],
+    jobs:       list[Job],
 ) -> list[UUID]:
-    """
-    Rank candidate jobs by BM25 score against `query_text` using BM25Okapi.
-    Returns job_ids ordered best → worst.
-    """
     tokenized_corpus = [_tokenize(job.job_description or "") for job in jobs]
     query_tokens     = _tokenize(query_text)
 
@@ -67,15 +53,11 @@ def _rank_by_bm25(
 
 # Section 2 — Semantic scoring
 
-def _cosine_sim(a: list[float], b: list[float] | None) -> float:
-    """
-    Cosine similarity via dot product of two already-normalised unit vectors.
-    For L2-normalised embeddings: cosine_similarity = dot_product.
-    Returns 0.0 if b is None (missing embedding → no contribution).
-    """
-    if b is None:
-        return 0.0
-    return float(np.dot(np.array(a, dtype=float), np.array(b, dtype=float)))
+def _normalize(vec: list[float]) -> np.ndarray:
+    """L2-normalize a vector. Returns zero vector if norm is zero."""
+    arr  = np.array(vec, dtype=float)
+    norm = np.linalg.norm(arr)
+    return arr / norm if norm > 0 else arr
 
 
 def _rank_by_semantic(
@@ -85,15 +67,14 @@ def _rank_by_semantic(
     project_vec: list[float] | None,
 ) -> list[UUID]:
     """
-    Rank candidate jobs by weighted cosine similarity.
+    Weighted cosine similarity between resume vectors and job embeddings.
+    All vectors are L2-normalised once before dot product.
 
-    Weights adjust dynamically so they always sum to 1.0:
-        skills + work + project available → 0.50 / 0.30 / 0.20
-        skills + work only               → 0.60 / 0.40
-        skills + project only            → 0.65 / 0.35
-        skills only                      → 1.00
-
-    Returns job_ids ordered best → worst (higher similarity = better).
+    Dynamic weights (always sum to 1.0):
+        skills + work + project → 0.50 / 0.30 / 0.20
+        skills + work only      → 0.60 / 0.40
+        skills + project only   → 0.65 / 0.35
+        skills only             → 1.00
     """
     has_work = work_vec    is not None
     has_proj = project_vec is not None
@@ -103,20 +84,29 @@ def _rank_by_semantic(
     elif not has_work and has_proj: w_skill, w_work, w_proj = 0.65, 0.00, 0.35
     else:                           w_skill, w_work, w_proj = 1.00, 0.00, 0.00
 
-    scored: list[tuple[UUID, float]] = [
-        (
-            job.job_id,
-            w_skill * _cosine_sim(skills_vec,  job.skill_embedding)
-            + w_work  * _cosine_sim(work_vec,  job.job_embedding)
-            + w_proj  * _cosine_sim(project_vec, job.job_embedding),
+    # Normalize resume vectors once — reused across all jobs
+    norm_skills = _normalize(skills_vec)
+    norm_work   = _normalize(work_vec)    if work_vec    else None
+    norm_proj   = _normalize(project_vec) if project_vec else None
+
+    scored = []
+    for job in jobs:
+        norm_skill_emb = job.skill_embedding 
+        norm_job_emb   = job.job_embedding   
+
+        score = (
+            w_skill * (float(np.dot(norm_skills, norm_skill_emb)) if norm_skill_emb is not None else 0.0)
+            + w_work  * (float(np.dot(norm_work,  norm_job_emb))  if norm_work  is not None and norm_job_emb is not None else 0.0)
+            + w_proj  * (float(np.dot(norm_proj,  norm_job_emb))  if norm_proj  is not None and norm_job_emb is not None else 0.0)
         )
-        for job in jobs
-    ]
+        scored.append((job.job_id, score))
+
     scored.sort(key=lambda x: x[1], reverse=True)
     return [jid for jid, _ in scored]
 
 
 # Section 3 — Reciprocal Rank Fusion
+
 def _reciprocal_rank_fusion(
     semantic_ranking: list[UUID],
     bm25_ranking:     list[UUID],
@@ -124,14 +114,7 @@ def _reciprocal_rank_fusion(
     bm25_weight:      float = 0.40,
 ) -> list[tuple[UUID, float]]:
     """
-    Fuse two ranked lists into one via weighted RRF, rescaled to [0, 100].
-
-    Formula:
-        score(d) = semantic_weight * 1/(RRF_K + rank_semantic(d))
-                 + bm25_weight    * 1/(RRF_K + rank_bm25(d))
-
-    Ranks are 1-indexed; documents absent from a list receive rank
-    len(list)+1 so they are penalised but not discarded.
+    Fuse two ranked lists via weighted RRF, rescaled to [0, 100].
     """
     all_ids   = list(dict.fromkeys(semantic_ranking + bm25_ranking))
     sem_rank  = {jid: i + 1 for i, jid in enumerate(semantic_ranking)}
@@ -149,94 +132,15 @@ def _reciprocal_rank_fusion(
     ]
     fused.sort(key=lambda x: x[1], reverse=True)
 
-    # Rescale to [0, 100]
-    if fused: 
-        top_score = fused[0][1] or 1.0 
-        fused = [ (jid, round((s / top_score) * 100, 2)) for jid, s in fused ]
+    if fused:
+        top_score = fused[0][1] or 1.0
+        fused = [(jid, round((s / top_score) * 100, 2)) for jid, s in fused]
 
     return fused
 
 
-# Section 4 — Candidate fetching
-def _build_similarity_expr(
-    skills_vec:  list[float],
-    work_vec:    list[float] | None,
-    project_vec: list[float] | None,
-):
-    """
-    Build a pgvector weighted inner-product expression for ORDER BY.
+# Section 4 — Resume vectors
 
-    Embeddings are L2-normalised so inner product == cosine similarity.
-    max_inner_product returns the NEGATIVE dot product, so ORDER BY ASC
-    gives highest similarity first — consistent with _cosine_sim in Python.
-
-    Mirrors the same dynamic weights used in _rank_by_semantic.
-    """
-    has_work = work_vec    is not None
-    has_proj = project_vec is not None
-
-    if has_work and has_proj:
-        return (
-            Job.skill_embedding.max_inner_product(skills_vec)  * 0.50
-            + Job.job_embedding.max_inner_product(work_vec)    * 0.30
-            + Job.job_embedding.max_inner_product(project_vec) * 0.20
-        )
-    elif has_work:
-        return (
-            Job.skill_embedding.max_inner_product(skills_vec) * 0.60
-            + Job.job_embedding.max_inner_product(work_vec)   * 0.40
-        )
-    elif has_proj:
-        return (
-            Job.skill_embedding.max_inner_product(skills_vec)  * 0.65
-            + Job.job_embedding.max_inner_product(project_vec) * 0.35
-        )
-    else:
-        return Job.skill_embedding.max_inner_product(skills_vec)
-
-
-def _fetch_candidates(
-    base_query,
-    skills_vec:  list[float],
-    work_vec:    list[float] | None,
-    project_vec: list[float] | None,
-    limit:       int,
-    db:          Session,
-) -> list[Job]:
-    """
-    Two-step candidate fetch to avoid the DISTINCT + ORDER BY + joinedload
-    subquery bug that causes SQLAlchemy to drop jobs silently.
-
-    Step 1 — fetch job_ids only, ordered by inner product similarity.
-             No joinedload here so no DISTINCT interference.
-    Step 2 — reload exactly those jobs with locations eagerly loaded.
-             No ORDER BY or DISTINCT so no jobs are lost.
-    """
-    similarity_expr = _build_similarity_expr(skills_vec, work_vec, project_vec)
-
-    # Step 1: get IDs only — clean ordering, no location join interference
-    id_rows = (
-        base_query
-        .with_entities(Job.job_id)
-        .order_by(similarity_expr.asc())          
-        .limit(limit * CANDIDATE_MULTIPLIER)
-        .all()
-    )
-    candidate_ids = [row.job_id for row in id_rows]
-
-    if not candidate_ids:
-        return []
-
-    # Step 2: load full job objects with locations — no ordering, no drops
-    return (
-        db.query(Job)
-        .options(joinedload(Job.locations))
-        .filter(Job.job_id.in_(candidate_ids))
-        .all()
-    )
-
-
-# Section 5 — Resume resolution (profile mode vs. uploaded file)
 class ResumeVectors:
     """Bundles the three resume vectors and the BM25 query text."""
 
@@ -253,18 +157,7 @@ class ResumeVectors:
         self.bm25_query_text = bm25_query_text
 
 
-def _resolve_profile_vectors(
-    target_user_id: UUID,
-    db: Session,
-) -> ResumeVectors | None:
-    """
-    Load resume vectors from the saved profile.
-
-    Returns None if no saved resume exists (caller falls back to newest-first).
-    Resume.resume_text is read directly — it was persisted at upload time as
-    skills + work_experience + projects — so hybrid (semantic + BM25) scoring
-    is fully available in profile mode with no re-parsing needed.
-    """
+def _resolve_profile_vectors(target_user_id: UUID, db: Session) -> ResumeVectors | None:
     saved_resume = (
         db.query(Resume)
         .filter(Resume.user_id == target_user_id)
@@ -281,19 +174,7 @@ def _resolve_profile_vectors(
     )
 
 
-def _resolve_uploaded_vectors(
-    resume_file:    UploadFile,
-    target_user_id: UUID,
-) -> ResumeVectors:
-    """
-    Parse an uploaded resume PDF into vectors + BM25 query text.
-
-    create_resume_embedding returns resume_text as its 1st value so no
-    second LLM call or extract_json import is needed here.
-
-    The temp file is written to disk, processed, then deleted regardless
-    of success or failure.
-    """
+def _resolve_uploaded_vectors(resume_file: UploadFile, target_user_id: UUID) -> ResumeVectors:
     validate_pdf_extension(resume_file)
     validate_file_size(resume_file)
 
@@ -301,10 +182,7 @@ def _resolve_uploaded_vectors(
     try:
         with open(temp_path, "wb") as buffer:
             shutil.copyfileobj(resume_file.file, buffer)
-
-        bm25_text, skill_emb, work_emb, project_emb = (
-            create_resume_embedding(temp_path)
-        )
+        bm25_text, skill_emb, work_emb, project_emb = create_resume_embedding(temp_path)
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
@@ -317,7 +195,7 @@ def _resolve_uploaded_vectors(
     )
 
 
-# Section 6 — Filter resolution
+# Section 5 — Filters
 
 class JobFilters:
     """Hard-filter parameters resolved from either the profile or manual input."""
@@ -333,15 +211,7 @@ class JobFilters:
         self.location_ids = location_ids
 
 
-def _resolve_profile_filters(
-    target_user_id: UUID,
-    db: Session,
-) -> JobFilters:
-    """
-    Pull job filter preferences from the saved JobSeekerProfile.
-
-    Raises 404 if no profile exists.
-    """
+def _resolve_profile_filters(target_user_id: UUID, db: Session) -> JobFilters:
     profile = (
         db.query(JobSeekerProfile)
         .filter(JobSeekerProfile.user_id == target_user_id)
@@ -353,11 +223,7 @@ def _resolve_profile_filters(
             detail="No jobseeker profile found. Please complete your profile first.",
         )
 
-    pref_locs = (
-        db.query(JobSeekerPreferredLocation)
-        .filter(JobSeekerPreferredLocation.user_id == target_user_id)
-        .all()
-    )
+    pref_locs    = db.query(JobSeekerPreferredLocation).filter(JobSeekerPreferredLocation.user_id == target_user_id).all()
     location_ids = [pl.location_id for pl in pref_locs] if pref_locs else None
 
     return JobFilters(
@@ -367,16 +233,13 @@ def _resolve_profile_filters(
     )
 
 
-# Section 7 — Base query builder
+# Section 6 — Hard filter query
 
-def _apply_hard_filters(db: Session, filters: JobFilters):
+def _apply_hard_filters(db: Session, filters: JobFilters) -> list[Job]:
     """
-    Build a SQLAlchemy query for Job with hard filters applied.
-    No joinedload here — locations are loaded separately in _fetch_candidates
-    Step 2 to avoid DISTINCT + ORDER BY subquery conflicts.
-    Filters are skipped when their value is None.
+    Apply hard filters and return matching Job objects with locations loaded.
     """
-    query = db.query(Job)
+    query = db.query(Job).options(joinedload(Job.locations))
 
     if filters.domain_id is not None:
         query = query.filter(Job.industry_domain_id == filters.domain_id)
@@ -392,28 +255,31 @@ def _apply_hard_filters(db: Session, filters: JobFilters):
             .group_by(Job.job_id)
         )
 
-    return query
+    return query.all()
 
 
-# Section 8 — Response builders
+# Section 7 — Response builders
 
 def _build_hybrid_response(
-    candidate_jobs: list[Job],
-    vectors:        ResumeVectors,
-    limit:          int,
+    jobs:    list[Job],
+    vectors: ResumeVectors,
+    limit:   int,
 ) -> list[RecJobResponse]:
     """
-    Run semantic ranking + BM25 ranking → fuse via RRF → return top `limit`.
+    1. Semantic ranking  — weighted cosine similarity (normalized vectors)
+    2. BM25 ranking      — keyword match on job descriptions
+    3. RRF fusion        — combine both rankings
+    4. Return top `limit` jobs
     """
     semantic_ranking = _rank_by_semantic(
-        candidate_jobs,
+        jobs,
         vectors.skills_vec,
         vectors.work_vec,
         vectors.project_vec,
     )
 
     bm25_ranking = (
-        _rank_by_bm25(vectors.bm25_query_text, candidate_jobs)
+        _rank_by_bm25(vectors.bm25_query_text, jobs)
         if vectors.bm25_query_text.strip()
         else semantic_ranking
     )
@@ -425,7 +291,7 @@ def _build_hybrid_response(
         bm25_weight      = 0.40,
     )
 
-    job_map: dict[UUID, Job] = {job.job_id: job for job in candidate_jobs}
+    job_map: dict[UUID, Job] = {job.job_id: job for job in jobs}
 
     return [
         RecJobResponse(
@@ -442,8 +308,8 @@ def _build_hybrid_response(
     ]
 
 
-def _build_fallback_response(jobs: list[Job]) -> list[RecJobResponse]:
-    """Newest-first response when no resume vectors are available."""
+def _build_fallback_response(jobs: list[Job], limit: int) -> list[RecJobResponse]:
+    """Newest-first when no resume vectors available."""
     return [
         RecJobResponse(
             job_id          = job.job_id,
@@ -454,11 +320,11 @@ def _build_fallback_response(jobs: list[Job]) -> list[RecJobResponse]:
             company_name    = job.company_name,
             match_score     = 0.0,
         )
-        for job in jobs
+        for job in jobs[:limit]
     ]
 
 
-# Section 9 — Endpoint
+# Section 8 — Endpoint
 
 @router.post("/jobs", response_model=List[RecJobResponse])
 async def get_recommended_jobs(
@@ -484,39 +350,22 @@ async def get_recommended_jobs(
         )
     )
 
-    # 2. Resolve resume vectors ------------------------------------------------
+    # 2. Fetch all jobs passing hard filters -----------------------------------
+    filtered_jobs = _apply_hard_filters(db, filters)
+    if not filtered_jobs:
+        return []
+
+    # 3. Resolve resume vectors ------------------------------------------------
     vectors: ResumeVectors | None = None
     if use_profile:
         vectors = _resolve_profile_vectors(target_user_id, db)
     elif resume_file:
         vectors = _resolve_uploaded_vectors(resume_file, target_user_id)
 
-    # 3. Apply hard filters ----------------------------------------------------
-    base_query = _apply_hard_filters(db, filters)
-
     # 4. Rank and return -------------------------------------------------------
     if vectors is not None:
-        candidate_jobs = _fetch_candidates(
-            base_query,
-            vectors.skills_vec,
-            vectors.work_vec,
-            vectors.project_vec,
-            limit,
-            db,                  # passed for Step 2 reload
-        )
-        if not candidate_jobs:
-            return []
-        return _build_hybrid_response(candidate_jobs, vectors, limit)
+        return _build_hybrid_response(filtered_jobs, vectors, limit)
 
-    # Fallback — no resume, return newest jobs passing the hard filters
-    fallback_jobs = (
-        db.query(Job)
-        .options(joinedload(Job.locations))
-        .filter(Job.job_id.in_(
-            base_query.with_entities(Job.job_id).subquery()
-        ))
-        .order_by(Job.posted_at.desc())
-        .limit(limit)
-        .all()
-    )
-    return _build_fallback_response(fallback_jobs)
+    # Fallback — no resume, return newest jobs
+    filtered_jobs.sort(key=lambda j: j.posted_at, reverse=True)
+    return _build_fallback_response(filtered_jobs, limit)

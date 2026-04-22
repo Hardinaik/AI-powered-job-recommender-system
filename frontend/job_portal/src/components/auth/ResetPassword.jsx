@@ -58,8 +58,8 @@ export default function ResetPassword() {
           <div className="reset-success">
             <h2 className="reset-title">Password updated</h2>
             <p>Your password has been reset successfully. You can now sign in with your new password.</p>
-            <div className="back-to-login">
-              <button onClick={() => navigate("/login")}>Go to login</button>
+            <div>
+              <button className="login-btn" onClick={() => navigate("/login")}>Go to login</button>
             </div>
           </div>
         ) : (

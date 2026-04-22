@@ -18,8 +18,7 @@ async def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get
 
     # SECURITY: same response whether email exists or not (prevents enumeration)
     if not user:
-        return {"message": "If this email is registered, a reset link has been sent."}
-
+        raise HTTPException(status_code=404, detail="No account found with this email address.")
     # Invalidate all previous unused tokens for this user
     db.query(PasswordResetToken).filter(
         PasswordResetToken.user_id == user.user_id,  

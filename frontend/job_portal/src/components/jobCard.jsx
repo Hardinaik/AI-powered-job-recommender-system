@@ -63,7 +63,7 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
       <div className="job-card">
 
         {/* Match Badge */}
-        {job.match_score >= 0 && (
+        {job.match_score > 0 && (
           <div className="match-badge">{Math.round(job.match_score)}% Match</div>
         )}
 
@@ -85,9 +85,19 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
         <div className="job-description">
           <div className="jd-header">
             <span className="jd-label">Job Description</span>
-            <button className="details-btn" onClick={() => setShowDetails(!showDetails)}>
-              {showDetails ? "Hide Details" : "View Details"}
-            </button>
+             <div className="jd-actions">
+              <button
+                className="company-btn"
+                onClick={() => setShowCompany(true)}
+                title="View company details"
+              >
+                <FaBuilding className="company-btn-icon" />
+                Company Info
+              </button>
+              <button className="details-btn" onClick={() => setShowDetails(!showDetails)}>
+                {showDetails ? "Hide Details" : "View Details"}
+              </button>
+            </div>
           </div>
           <p className={showDetails ? "" : "jd-preview"}>{job.job_description}</p>
         </div>
@@ -102,14 +112,7 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
             {applied ? "Applied" : "Apply Now"}
           </button>
 
-          <button
-            className="company-btn"
-            onClick={() => setShowCompany(true)}
-            title="View company details"
-          >
-            <FaBuilding className="company-btn-icon" />
-            Company Info
-          </button>
+          
 
           <button
             className={`save-btn ${saved ? "saved" : ""}`}
