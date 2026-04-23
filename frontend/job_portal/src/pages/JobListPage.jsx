@@ -6,6 +6,8 @@ import Logout from "../components/auth/Logout";
 import Loader from "../components/loader";
 import api from "../api/axios";
 import "./JobListPage.css";
+import ErrorBanner from "../components/ErrorBanner";
+import { getErrorMessage } from "../utils/errorUtils";
 
 function JobListPage() {
   const navigate = useNavigate();
@@ -15,6 +17,7 @@ function JobListPage() {
   const [savedJobIds, setSavedJobIds] = useState([]);
   const [appliedJobIds, setAppliedJobIds] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // --- Filter state ---
   const [useProfile, setUseProfile] = useState(false);       // "Recommend using profile" checkbox
@@ -34,6 +37,7 @@ function JobListPage() {
   }));
 
   // ── 1. Initial Load ──
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const initData = async () => {
       setLoading(true);
@@ -52,7 +56,7 @@ function JobListPage() {
 
         await applyFilters();
       } catch (error) {
-        console.error("Initialization failed", error);
+        setError(getErrorMessage(error)); 
       } finally {
         setLoading(false);
       }
@@ -61,6 +65,7 @@ function JobListPage() {
   }, []);
 
   // ── 2. View Changes ──
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const fetchViewData = async () => {
       if (view === "all") {
@@ -69,6 +74,7 @@ function JobListPage() {
       }
 
       setLoading(true);
+      setError(null); 
       try {
         const endpoint =
           view === "saved"
@@ -78,7 +84,7 @@ function JobListPage() {
         const res = await api.get(endpoint);
         setJobs(res.data);
       } catch (error) {
-        console.error("Failed to fetch view details", error);
+        setError(getErrorMessage(error));  
         setJobs([]);
       } finally {
         setLoading(false);
@@ -106,19 +112,15 @@ function JobListPage() {
     setLoading(true);
     try {
       const formData = new FormData();
-      formData.append("use_profile", useProfile);
 
-      // Manual resume upload — only relevant when profile mode is OFF
       if (!useProfile && selectedFile) {
         formData.append("resume_file", selectedFile);
       }
 
-      // Query params — only sent in manual mode
-      // In profile mode the backend reads these from the saved profile itself
-      const params = {};
+      const params = { use_profile: useProfile };
+
       if (!useProfile) {
         if (domainId) params.domain_id = domainId;
-        // Send each selected location as a repeated param: ?location_ids=1&location_ids=2
         selectedLocations.forEach((loc) => {
           if (!params.location_ids) params.location_ids = [];
           params.location_ids.push(loc.value);
@@ -128,7 +130,6 @@ function JobListPage() {
 
       const response = await api.post("/recommendations/jobs", formData, {
         params,
-        // axios serialises repeated array params correctly with this setting
         paramsSerializer: (p) => {
           const parts = [];
           Object.entries(p).forEach(([key, val]) => {
@@ -144,7 +145,8 @@ function JobListPage() {
 
       setJobs(response.data);
     } catch (error) {
-      console.error("Fetch failed", error);
+      setError(getErrorMessage(error));
+      setJobs([]);
     } finally {
       setLoading(false);
     }
@@ -156,8 +158,9 @@ function JobListPage() {
     setExperience("");
     setUseProfile(false);
     setSelectedFile(null);
-
+    setError(null);
     setLoading(true);
+   
     try {
       const formData = new FormData();
       formData.append("use_profile", false);
@@ -214,6 +217,7 @@ function JobListPage() {
         <Logout />
       </div>
 
+      <ErrorBanner message={error} onClose={() => setError(null)} />
       {/* ── Body ── */}
       <div className="job-page">
 

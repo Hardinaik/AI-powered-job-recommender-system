@@ -2,7 +2,12 @@
 from fastapi import HTTPException
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
-from app.modelregistry import get_llm, get_embedding_model
+from langchain_core.exceptions import OutputParserException
+from app.modelregistry import get_llm,safe_encode
+from app.exceptions import LLMError, EmbeddingError
+from pydantic import ValidationError
+from .schemas import JobExtraction
+import groq
 
 # ---------------------------------------------------------------------------
 # Prompt template
@@ -71,46 +76,44 @@ Return strictly in this format (no markdown, no preamble):
 {{
   "job_role": "",
   "skills": "",
-  "education": "",
   "job_summary": ""
 }}
 """
 
 
-def extract_json(jd: str) -> dict:
-    """
-    Extracts structured job data from a raw job description string.
-
-    Returns a dict with keys:
-        - skills       (space-separated, no commas)
-        - job_summary  (rich combined responsibilities + domain context)
-    """
+def extract_json(jd: str) -> JobExtraction:
     prompt = PromptTemplate.from_template(template)
-    chain = prompt | get_llm() | JsonOutputParser()
-    extracted: dict = chain.invoke({"jd": jd})
 
-    required_keys = {"skills", "job_summary"}
-    missing_keys = required_keys - set(extracted.keys())
-    if missing_keys:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Job description parsing failed — LLM response missing fields: {missing_keys}.",
+    try:
+        chain = prompt | get_llm() | JsonOutputParser()
+        raw: dict = chain.invoke({"jd": jd})
+
+    except groq.RateLimitError:
+        raise LLMError(
+            "AI service is busy right now. Please try again in a moment.",
+            status_code=429,
         )
-
-    if not extracted.get("skills", "").strip():
-        raise HTTPException(
+    except groq.AuthenticationError:
+        raise LLMError("AI service authentication failed.", status_code=500)
+    except groq.APITimeoutError:
+        raise LLMError("AI service timed out. Please try again.", status_code=504)
+    except groq.APIStatusError as e:
+        raise LLMError(f"AI service error: {e.message}", status_code=502)
+    except OutputParserException:
+        raise LLMError(
+            "AI returned an unexpected format. Please try again.",
             status_code=422,
-            detail="Job description parsing failed — could not extract any skills.",
         )
+    except Exception as e:
+        raise LLMError(f"Unexpected LLM error: {str(e)}", status_code=503)
 
-    if not extracted.get("job_summary", "").strip():
-        raise HTTPException(
+    try:
+        return JobExtraction.model_validate(raw)
+    except ValidationError as e:
+        raise LLMError(
+            f"AI output missing required fields: {e.errors()[0]['msg']}",
             status_code=422,
-            detail="Job description parsing failed — could not extract a job summary.",
         )
-
-    return extracted
-
 
 def create_job_embedding(jd: str) -> tuple[list[float], list[float]]:
     """
@@ -140,22 +143,15 @@ def create_job_embedding(jd: str) -> tuple[list[float], list[float]]:
         0.30 × work_exp vs job_summary
         0.20 × projects vs job_summary
     """
+    
     document = extract_json(jd)
-    model = get_embedding_model()
 
-    job_skills: str = document.get("skills", "").replace(",", " ").strip()
-    job_summary: str = document.get("job_summary", "").strip()
+    job_skills: str = document.skills.replace(",", " ").strip()
+    job_summary: str = document.job_summary.strip()
 
-    skill_embedding: list[float] = model.encode(
-        job_skills,
-        convert_to_numpy=True,
-        normalize_embeddings=True,
-    ).tolist()
-
-    job_embedding: list[float] = model.encode(
-        job_summary,
-        convert_to_numpy=True,
-        normalize_embeddings=True,
-    ).tolist()
+    # EmbeddingError propagates up — caller handles it
+    skill_embedding = safe_encode(job_skills)
+    job_embedding   = safe_encode(job_summary)
 
     return skill_embedding, job_embedding
+

@@ -4,6 +4,8 @@ import "./RecruiterDashBoard.css";
 import JobPostCard from "../components/JobPostCard";
 import Logout from "../components/auth/Logout";
 import Loader from "../components/loader";
+import ErrorBanner from "../components/ErrorBanner";
+import { getErrorMessage } from "../utils/errorUtils";
 import { FaPlus, FaBriefcase } from "react-icons/fa";
 import axios from "axios";
 import Select from "react-select";
@@ -18,6 +20,7 @@ const RecruiterDashBoard = () => {
   const [domains, setDomains] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [error, setError] = useState(null);
  
   const [formData, setFormData] = useState({
     company_name: "",
@@ -112,11 +115,13 @@ const RecruiterDashBoard = () => {
       setSubmitSuccess(true);
       setTimeout(() => setSubmitSuccess(false), 3000);
     } catch (err) {
-      alert("Failed to post job");
+      setError(getErrorMessage(err)); 
     } finally {
       setLoading(false);
     }
   };
+
+
  
   const toggleDetails = (job_id) => {
     setExpandedJobId(expandedJobId === job_id ? null : job_id);
@@ -129,7 +134,11 @@ const RecruiterDashBoard = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       setJobs((prev) => prev.filter((job) => job.job_id !== job_id));
-    } finally {
+    } 
+    catch(err){
+      setError(getErrorMessage(err));
+    }
+    finally {
       setLoading(false);
     }
   };
@@ -159,7 +168,7 @@ const RecruiterDashBoard = () => {
  
       {/* Body */}
       <div className="rd-body">
- 
+        <ErrorBanner message={error} onClose={() => setError(null)} />
         {/* Left — Post Job Form */}
         <div className="rd-form-col">
           <div className="rd-card">

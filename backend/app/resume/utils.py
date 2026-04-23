@@ -1,9 +1,14 @@
 import re
+import groq
 from fastapi import HTTPException, UploadFile
 from langchain_community.document_loaders import PyMuPDFLoader
 from langchain_core.prompts import PromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
-from app.modelregistry import get_llm, get_embedding_model
+from app.exceptions import LLMError, EmbeddingError, PDFExtractionError
+from langchain_core.exceptions import OutputParserException
+from app.modelregistry import get_llm, safe_encode
+from pydantic import ValidationError
+from .schemas import ResumeExtraction
  
 MAX_FILE_SIZE = 5 * 1024 * 1024
  
@@ -20,13 +25,10 @@ def validate_pdf_extension(file: UploadFile) -> None:
  
  
 def validate_file_size(file: UploadFile) -> None:
-    contents = file.file.read()
-    file.file.seek(0)
-    size = len(contents)
-    if size > MAX_FILE_SIZE:
+    if file.size and file.size > MAX_FILE_SIZE:
         raise HTTPException(
             status_code=400,
-            detail=f"File too large ({size / (1024 * 1024):.2f} MB). Maximum allowed size is 5 MB.",
+            detail=f"File too large ({file.size / (1024*1024):.2f} MB). Max is 5 MB.",
         )
  
  
@@ -98,12 +100,19 @@ template = """
 # ---------------------------------------------------------------------------
 # Text extraction & cleaning
 # ---------------------------------------------------------------------------
- 
+
 def extract_text_from_pdf(file_path: str) -> str:
-    loader = PyMuPDFLoader(file_path)
-    pages = loader.load()
-    return "\n".join([page.page_content for page in pages])
- 
+    try:
+        loader = PyMuPDFLoader(file_path)
+        pages = loader.load()
+        if not pages:
+            raise PDFExtractionError("PDF appears to be empty or unreadable.")
+        return "\n".join([page.page_content for page in pages])
+    except PDFExtractionError:
+        raise
+    except Exception as e:
+        raise PDFExtractionError(f"Failed to read PDF: {str(e)}")
+
  
 def clean_resume_text(text: str) -> str:
     text = re.sub(r"\S+@\S+\.\S+", "", text)
@@ -118,53 +127,51 @@ def clean_resume_text(text: str) -> str:
 # ---------------------------------------------------------------------------
 # LLM extraction
 # ---------------------------------------------------------------------------
- 
-def extract_json(filepath: str) -> dict:
-    """
-    Extracts structured resume data from a PDF using the LLM chain.
- 
-    Returns a dict with keys:
-        - skills           (non-empty string — REQUIRED)
-        - work_experience  (list of strings — may be empty [])
-        - projects         (list of strings — may be empty [])
-    """
-    raw_text = extract_text_from_pdf(filepath)
+
+
+def extract_json(filepath: str) -> ResumeExtraction:
+    try:
+        raw_text = extract_text_from_pdf(filepath)
+    except PDFExtractionError:
+        raise
+
     cleaned_text = clean_resume_text(raw_text)
- 
-    prompt = PromptTemplate.from_template(template)
-    chain = prompt | get_llm() | JsonOutputParser()
-    extracted: dict = chain.invoke({"resume": cleaned_text})
- 
-    # Validate required keys are present
-    required_keys = {"skills", "work_experience", "projects"}
-    missing_keys = required_keys - set(extracted.keys())
-    if missing_keys:
-        raise HTTPException(
-            status_code=422,
-            detail=(
-                f"Resume parsing failed — LLM response missing fields: {missing_keys}. "
-                "Try a cleaner or more complete PDF."
-            ),
+
+    if not cleaned_text.strip():
+        raise PDFExtractionError("Resume appears to be blank after cleaning.")
+
+    try:
+        prompt = PromptTemplate.from_template(template)
+        chain = prompt | get_llm() | JsonOutputParser()
+        raw: dict = chain.invoke({"resume": cleaned_text})
+
+    except groq.RateLimitError:
+        raise LLMError(
+            "AI service is busy. Please try uploading again in a moment.",
+            status_code=429,
         )
- 
-    # skills is the only hard-required non-empty field
-    if not extracted.get("skills", "").strip():
-        raise HTTPException(
+    except groq.AuthenticationError:
+        raise LLMError("AI service authentication failed.", status_code=500)
+    except groq.APITimeoutError:
+        raise LLMError("AI service timed out. Please try again.", status_code=504)
+    except groq.APIStatusError as e:
+        raise LLMError(f"AI service error: {e.message}", status_code=502)
+    except OutputParserException:
+        raise LLMError(
+            "AI returned an unexpected format. Please try again.",
             status_code=422,
-            detail=(
-                "Resume parsing failed — could not extract any skills. "
-                "Ensure the PDF contains readable text (not a scanned image)."
-            ),
         )
- 
-    # Ensure work_experience and projects are lists (guard against LLM returning strings)
-    if not isinstance(extracted.get("work_experience"), list):
-        extracted["work_experience"] = []
-    if not isinstance(extracted.get("projects"), list):
-        extracted["projects"] = []
- 
-    return extracted
- 
+    except Exception as e:
+        raise LLMError(f"Unexpected LLM error: {str(e)}", status_code=503)
+
+    try:
+        return ResumeExtraction.model_validate(raw)
+    except ValidationError as e:
+        raise LLMError(
+            f"AI output missing required fields: {e.errors()[0]['msg']}",
+            status_code=422,
+        )
+
  
 # ---------------------------------------------------------------------------
 # Embedding creation
@@ -194,34 +201,26 @@ def create_resume_embedding(
         - If project_emb is None, skip the project cosine term.
         - Reweight remaining terms so they still sum to 1.0.
     """
-    document = extract_json(filepath)
-    model = get_embedding_model()
- 
-    resume_skills: str = document["skills"].strip()
- 
-    # Work experience — join list items into one paragraph; None if empty list
-    work_items: list[str] = document.get("work_experience", [])
-    work_text: str | None = " ".join(work_items).strip() if work_items else None
- 
-    # Projects — same treatment
-    project_items: list[str] = document.get("projects", [])
-    project_text: str | None = " ".join(project_items).strip() if project_items else None
 
-    resume_text: str = " ".join(
+
+    document = extract_json(filepath)  # LLMError / PDFExtractionError propagate up
+
+    resume_skills = document.skills.strip()
+    work_items    = document.work_experience
+    project_items = document.projects
+
+    work_text    = " ".join(work_items).strip()    if work_items    else None
+    project_text = " ".join(project_items).strip() if project_items else None
+
+    resume_text = " ".join(
         [resume_skills]
         + (work_items    if work_items    else [])
         + (project_items if project_items else [])
     ).strip()
 
-    def _encode(text: str) -> list[float]:
-        return model.encode(
-            text,
-            convert_to_numpy=True,
-            normalize_embeddings=True,
-        ).tolist()
- 
-    skill_embedding: list[float] = _encode(resume_skills)
-    work_embedding: list[float] | None = _encode(work_text) if work_text else None
-    project_embedding: list[float] | None = _encode(project_text) if project_text else None
- 
-    return resume_text,skill_embedding, work_embedding, project_embedding
+    # EmbeddingError propagates up — caller handles it
+    skill_embedding   = safe_encode(resume_skills)
+    work_embedding    = safe_encode(work_text)    if work_text    else None
+    project_embedding = safe_encode(project_text) if project_text else None
+
+    return resume_text, skill_embedding, work_embedding, project_embedding

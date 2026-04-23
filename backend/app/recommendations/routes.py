@@ -2,10 +2,11 @@ import os
 import shutil
 from uuid import UUID
 from typing import List, Optional
-
+import tempfile
 import numpy as np
 from rank_bm25 import BM25Okapi
-from fastapi import APIRouter, Depends, Query, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException
+from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models import Job, Location, Resume, JobSeekerProfile, JobSeekerPreferredLocation
@@ -16,6 +17,8 @@ from app.resume.utils import (
     create_resume_embedding,
 )
 from app.utils import get_current_jobseeker
+from app.exceptions import LLMError, EmbeddingError, PDFExtractionError
+
 
 router = APIRouter(prefix="/recommendations", tags=["Recommendations"])
 
@@ -86,8 +89,8 @@ def _rank_by_semantic(
 
     # Normalize resume vectors once — reused across all jobs
     norm_skills = _normalize(skills_vec)
-    norm_work   = _normalize(work_vec)    if work_vec    else None
-    norm_proj   = _normalize(project_vec) if project_vec else None
+    norm_work = _normalize(work_vec)    if work_vec is not None else None
+    norm_proj = _normalize(project_vec) if project_vec is not None else None
 
     scored = []
     for job in jobs:
@@ -167,20 +170,21 @@ def _resolve_profile_vectors(target_user_id: UUID, db: Session) -> ResumeVectors
         return None
 
     return ResumeVectors(
-        skills_vec      = saved_resume.skill_embedding,
-        work_vec        = saved_resume.work_embedding,
-        project_vec     = saved_resume.project_embedding,
+        skills_vec      = list(saved_resume.skill_embedding),
+        work_vec        = list(saved_resume.work_embedding)    if saved_resume.work_embedding    is not None else None,
+        project_vec     = list(saved_resume.project_embedding) if saved_resume.project_embedding is not None else None,
         bm25_query_text = saved_resume.resume_text or "",
     )
+
 
 
 def _resolve_uploaded_vectors(resume_file: UploadFile, target_user_id: UUID) -> ResumeVectors:
     validate_pdf_extension(resume_file)
     validate_file_size(resume_file)
 
-    temp_path = f"temp_{target_user_id}.pdf"
+    tmp_fd, temp_path = tempfile.mkstemp(suffix=".pdf")
     try:
-        with open(temp_path, "wb") as buffer:
+        with os.fdopen(tmp_fd, "wb") as buffer:
             shutil.copyfileobj(resume_file.file, buffer)
         bm25_text, skill_emb, work_emb, project_emb = create_resume_embedding(temp_path)
     finally:
@@ -193,7 +197,6 @@ def _resolve_uploaded_vectors(resume_file: UploadFile, target_user_id: UUID) -> 
         project_vec     = project_emb,
         bm25_query_text = bm25_text,
     )
-
 
 # Section 5 — Filters
 
@@ -236,27 +239,35 @@ def _resolve_profile_filters(target_user_id: UUID, db: Session) -> JobFilters:
 # Section 6 — Hard filter query
 
 def _apply_hard_filters(db: Session, filters: JobFilters) -> list[Job]:
-    """
-    Apply hard filters and return matching Job objects with locations loaded.
-    """
-    query = db.query(Job).options(joinedload(Job.locations))
+    
+    # Step 1: Build a subquery to get matching job_ids only
+    id_query = select(Job.job_id)
 
     if filters.domain_id is not None:
-        query = query.filter(Job.industry_domain_id == filters.domain_id)
+        id_query = id_query.where(Job.industry_domain_id == filters.domain_id)
 
     if filters.experience is not None:
-        query = query.filter(Job.min_experience <= filters.experience)
+        id_query = id_query.where(Job.min_experience <= filters.experience)
 
     if filters.location_ids:
-        query = (
-            query
+        id_query = (
+            id_query
             .join(Job.locations)
-            .filter(Location.id.in_(filters.location_ids))
-            .group_by(Job.job_id)
+            .where(Location.id.in_(filters.location_ids))
+            .distinct()  # one job_id even if multiple locations matched
         )
 
-    return query.all()
+    matched_ids = id_query.scalar_subquery()
 
+    # Step 2: Load full Job objects cleanly with locations eager loaded
+    jobs = (
+        db.query(Job)
+        .options(joinedload(Job.locations))
+        .filter(Job.job_id.in_(matched_ids))
+        .all()
+    )
+
+    return jobs
 
 # Section 7 — Response builders
 
@@ -328,12 +339,12 @@ def _build_fallback_response(jobs: list[Job], limit: int) -> list[RecJobResponse
 
 @router.post("/jobs", response_model=List[RecJobResponse])
 async def get_recommended_jobs(
-    use_profile:  bool                 = Form(False),
+    use_profile:  bool                 = Query(False),
     domain_id:    Optional[int]        = Query(None),
     location_ids: Optional[List[int]]  = Query(None),
     experience:   Optional[int]        = Query(None),
+    limit:        int                  = Query(default=10, ge=1, le=100),
     resume_file:  Optional[UploadFile] = File(None),
-    limit:        int                  = 10,
     db:           Session              = Depends(get_db),
     current_user: dict                 = Depends(get_current_jobseeker),
 ):
@@ -360,7 +371,11 @@ async def get_recommended_jobs(
     if use_profile:
         vectors = _resolve_profile_vectors(target_user_id, db)
     elif resume_file:
-        vectors = _resolve_uploaded_vectors(resume_file, target_user_id)
+        try:
+            vectors = _resolve_uploaded_vectors(resume_file, target_user_id)
+        except (LLMError, PDFExtractionError, EmbeddingError) as e:
+            status = e.status_code if hasattr(e, "status_code") else 422
+            raise HTTPException(status_code=status, detail=str(e))
 
     # 4. Rank and return -------------------------------------------------------
     if vectors is not None:

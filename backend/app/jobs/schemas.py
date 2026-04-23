@@ -1,5 +1,5 @@
 import re
-from pydantic import BaseModel
+from pydantic import BaseModel,field_validator
 from typing import List
 from uuid import UUID
 
@@ -36,3 +36,15 @@ class JobResponse(BaseModel):
 
 class DeleteJobResponse(BaseModel):
     job_id:UUID
+
+class JobExtraction(BaseModel):
+    job_role: str = ""
+    skills: str
+    job_summary: str
+
+    @field_validator("skills", "job_summary")
+    @classmethod
+    def must_not_be_empty(cls, v: str, info) -> str:
+        if not v or not v.strip():
+            raise ValueError(f"{info.field_name} cannot be empty")
+        return v.strip()

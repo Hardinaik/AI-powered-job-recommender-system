@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException,status
 from sqlalchemy.orm import Session,joinedload
 from datetime import datetime, timezone
 
+from app.exceptions import LLMError, EmbeddingError
 from .schemas import JobPostRequest, JobPostResponse,JobResponse,DeleteJobResponse
 from app.database import get_db
 from app.models import Job, Location, IndustryDomain
@@ -12,6 +13,18 @@ from uuid import UUID
 
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
+
+
+@router.get("/locations")
+def get_locations(db: Session = Depends(get_db)):
+    return db.query(Location).all()
+
+
+@router.get("/industry-domains")
+def get_industry_domains(db: Session = Depends(get_db)):
+    return db.query(IndustryDomain).all()
+
+
 
 @router.post("/post", response_model=JobPostResponse)
 def create_job(
@@ -43,14 +56,14 @@ def create_job(
         )
 
 
+    
     try:
         skill_embedding, job_embedding = create_job_embedding(job.job_description)
-    except Exception:
-        raise HTTPException(
-            status_code=503,
-            detail="Embedding service temporarily unavailable"
-        )
-   
+    except LLMError as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except EmbeddingError as e:
+        raise HTTPException(status_code=503, detail=str(e))
+        
     new_job = Job(
         job_title=job.job_title,
         company_name=job.company_name,
@@ -125,14 +138,4 @@ def delete_job(
     db.commit()
 
     return DeleteJobResponse(job_id=job_id)
-
-
-@router.get("/locations")
-def get_locations(db: Session = Depends(get_db)):
-    return db.query(Location).all()
-
-
-@router.get("/industry-domains")
-def get_industry_domains(db: Session = Depends(get_db)):
-    return db.query(IndustryDomain).all()
 

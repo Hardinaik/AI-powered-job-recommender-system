@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.exceptions import LLMError, EmbeddingError, PDFExtractionError
 from app.database import get_db
 from app.utils import get_current_jobseeker
 from app.models import Resume, User
@@ -48,18 +49,18 @@ async def upload_resume(
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
+    
     try:
-        resume_text,skill_embedding, work_embedding, project_embedding = create_resume_embedding(file_path)
-    except Exception as e:
+         resume_text, skill_embedding, work_embedding, project_embedding = create_resume_embedding(file_path)
+    except (LLMError, PDFExtractionError, EmbeddingError) as e:
         if os.path.exists(file_path):
-            os.remove(file_path)
-        raise HTTPException(
-            status_code=422,
-            detail=f"Resume processing failed: {str(e)}",
-        )
+            os.remove(file_path)  # ✅ always cleans up
+        status_code = e.status_code if hasattr(e, "status_code") else 422
+        raise HTTPException(status_code=status_code, detail=str(e))
+
 
     if existing_resume:
-        existing_resume.resume_url = file_path
+        existing_resume.resume_url = file_path.as_posix()
         existing_resume.resume_text=resume_text
         existing_resume.skill_embedding = skill_embedding
         existing_resume.work_embedding = work_embedding      

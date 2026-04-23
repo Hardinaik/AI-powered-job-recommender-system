@@ -3,8 +3,6 @@ from pydantic import BaseModel,Field
 from typing import List
 from uuid import UUID
 
-
-
 class RecJobResponse(BaseModel):
     job_id: UUID
     job_title: str
