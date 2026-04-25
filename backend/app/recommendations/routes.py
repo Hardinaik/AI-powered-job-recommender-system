@@ -136,8 +136,8 @@ def _reciprocal_rank_fusion(
     fused.sort(key=lambda x: x[1], reverse=True)
 
     if fused:
-        top_score = fused[0][1] or 1.0
-        fused = [(jid, round((s / top_score) * 100, 2)) for jid, s in fused]
+        #top_score = fused[0][1] or 1.0
+        fused = [(jid, round((s) * 100, 2)) for jid, s in fused]
 
     return fused
 
