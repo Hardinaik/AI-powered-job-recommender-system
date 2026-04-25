@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: job_portal_backend         # change to your app name
+    runtime: python
+    rootDir: backend               
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    plan: free                    
+    autoDeploy: true                # auto-deploys on every push to main branch
+
+    envVars:
+      # ── Auth ──────────────────────────────────────────────────────────
+      - key: SECRET_KEY
+        sync: false                 # 'sync: false' = secret, set manually in Render dashboard
+
+      - key: ALGORITHM
+        value: HS256
+
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: 60
+
+      - key: RESET_TOKEN_EXPIRE_MINUTES
+        value: 15
+
+      # ── API ───────────────────────────────────────────────────────────
+      - key: API_KEY
+        sync: false
+
+      # ── Email / SMTP ──────────────────────────────────────────────────
+      - key: SMTP_HOST
+        sync: false
+
+      - key: SMTP_PORT
+        value: 587
+
+      - key: SMTP_USER
+        sync: false
+
+      - key: SMTP_PASSWORD
+        sync: false
+
+      # ── App URLs ──────────────────────────────────────────────────────
+      - key: FRONTEND_URL
+        sync: false                 # e.g. https://your-frontend.onrender.com
+
+      # ── Database ──────────────────────────────────────────────────────
+      - key: DATABASE_URL
+        sync: false                 # paste your Render Internal DB URL in the dashboard
