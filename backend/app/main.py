@@ -10,7 +10,9 @@ from app.resume.routes import router as resume_router
 from app.auth.passwords.routes import router as reset_pass_router
 from app.notifications.routes import router as notification_router
 from app.modelregistry import preload_models, cleanup_models
+from app.config import settings
 
+FRONTEND_URL=settings.FRONTEND_URL
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,7 +25,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
