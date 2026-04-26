@@ -15,12 +15,12 @@ router = APIRouter(prefix="/auth/passwords", tags=["Reset Password"])
 
 @router.post("/forgot-password")
 @limiter.limit("2/minute")
-async def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
+async def forgot_password(request:Request,body: ForgotPasswordRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == body.email).first()
 
     # SECURITY: same response whether email exists or not (prevents enumeration)
     if not user:
-        raise HTTPException(status_code=404, detail="No account found with this email address.")
+        return {"message": "If this email is registered, a reset link has been sent."}
     # Invalidate all previous unused tokens for this user
     db.query(PasswordResetToken).filter(
         PasswordResetToken.user_id == user.user_id,  
@@ -42,7 +42,7 @@ async def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get
 
 @router.post("/reset-password")
 @limiter.limit("2/minute")
-async def reset_password(body: ResetPasswordRequest, db: Session = Depends(get_db)):
+async def reset_password(request:Request,body: ResetPasswordRequest, db: Session = Depends(get_db)):
     # 1. Verify JWT signature + expiry
     user_id = _verify_reset_token(body.token)
 

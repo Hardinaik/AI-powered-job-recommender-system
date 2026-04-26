@@ -341,6 +341,7 @@ def _build_fallback_response(jobs: list[Job], limit: int) -> list[RecJobResponse
 @router.post("/jobs", response_model=List[RecJobResponse])
 @limiter.limit("1/minute")
 async def get_recommended_jobs(
+    request:Request,
     use_profile:  bool                 = Query(False),
     domain_id:    Optional[int]        = Query(None),
     location_ids: Optional[List[int]]  = Query(None),
@@ -348,7 +349,8 @@ async def get_recommended_jobs(
     limit:        int                  = Query(default=10, ge=1, le=100),
     resume_file:  Optional[UploadFile] = File(None),
     db:           Session              = Depends(get_db),
-    current_user: dict                 = Depends(get_current_jobseeker),
+    current_user: dict                 = Depends(get_current_jobseeker)
+    
 ):
     target_user_id = UUID(current_user["user_id"])
 

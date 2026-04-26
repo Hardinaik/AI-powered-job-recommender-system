@@ -29,6 +29,7 @@ def get_industry_domains(db: Session = Depends(get_db),_: dict = Depends(get_cur
 @router.post("/post", response_model=JobPostResponse)
 @limiter.limit("2/minute")
 def create_job(
+    request:Request,
     job: JobPostRequest,
     db: Session = Depends(get_db),
     current_recruiter: dict = Depends(get_current_recruiter)

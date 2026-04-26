@@ -26,6 +26,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 @limiter.limit("2/minute")
 async def upload_resume(
+    request:Request,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_jobseeker),
