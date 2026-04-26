@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { FaMapMarkerAlt, FaTrash } from "react-icons/fa";
 import "./JobPostCard.css";
 

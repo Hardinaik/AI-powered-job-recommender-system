@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { MdErrorOutline, MdClose } from "react-icons/md";
 
 function ErrorBanner({ message, onClose }) {

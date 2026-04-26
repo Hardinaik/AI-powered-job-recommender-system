@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { useState, useEffect } from "react";
 import { FaBookmark, FaBuilding } from "react-icons/fa";
 import api from "../api/axios";

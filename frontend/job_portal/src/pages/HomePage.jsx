@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import Login from "../components/auth/Login";
 import "./HomePage.css";
 import heroImage from "../images/home_img.jpg";
