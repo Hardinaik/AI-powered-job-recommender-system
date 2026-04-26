@@ -3,7 +3,8 @@ import shutil
 
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status,Request
+from app.limiter import limiter
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -23,6 +24,7 @@ UPLOAD_DIR = "uploads/resumes"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
+@limiter.limit("2/minute")
 async def upload_resume(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),

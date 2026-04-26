@@ -30,3 +30,6 @@ aiofiles
 # Vector & Search
 pgvector
 rank-bm25
+
+
+slowapi

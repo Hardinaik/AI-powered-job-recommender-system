@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Job, User, Resume, JobSeekerProfile
-from app.utils import get_current_jobseeker
+from app.utils import get_current_jobseeker,get_current_user
 from app.notifications.schemas import ApplicationNotifyForm, ApplicationPrefillResponse
 from app.services.email_services import (
     send_recruiter_application_email,
@@ -76,6 +76,7 @@ async def notify_application(
     form:             ApplicationNotifyForm,
     background_tasks: BackgroundTasks,             
     db:               Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
 ):
     """
     Accepts the fully filled form (pre-filled values + user edits).

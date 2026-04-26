@@ -1,13 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException,status
 from sqlalchemy.orm import Session,joinedload
 from datetime import datetime, timezone
-
 from app.exceptions import LLMError, EmbeddingError
 from .schemas import JobPostRequest, JobPostResponse,JobResponse,DeleteJobResponse
 from app.database import get_db
 from app.models import Job, Location, IndustryDomain
 from .utils import create_job_embedding
-from app.utils import get_current_recruiter
+from app.utils import get_current_recruiter,get_current_user
 from typing import List
 from uuid import UUID
 
@@ -16,12 +15,12 @@ router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
 
 @router.get("/locations")
-def get_locations(db: Session = Depends(get_db)):
+def get_locations(db: Session = Depends(get_db),_: dict = Depends(get_current_user)):
     return db.query(Location).all()
 
 
 @router.get("/industry-domains")
-def get_industry_domains(db: Session = Depends(get_db)):
+def get_industry_domains(db: Session = Depends(get_db),_: dict = Depends(get_current_user)):
     return db.query(IndustryDomain).all()
 
 

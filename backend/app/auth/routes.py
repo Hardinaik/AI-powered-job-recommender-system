@@ -1,9 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status,Request
+from app.limiter import limiter
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User
 from .schemas import SignupRequest,LoginResponse,LoginRequest
 from app.utils import hash_password,verify_password,create_access_token
+
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -24,7 +26,8 @@ def authenticate_user(user: User):
 
 
 @router.post("/signup", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
-def signup(data: SignupRequest, db: Session = Depends(get_db)):
+@limiter.limit("2/minute")
+def signup(request:Request ,data: SignupRequest, db: Session = Depends(get_db)):
     # Check email
     existing_user = db.query(User).filter(User.email == data.email).first()
     
@@ -50,7 +53,9 @@ def signup(data: SignupRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=LoginResponse)
+@limiter.limit("2/minute")
 def login(
+    request:Request,
     data: LoginRequest,
     db: Session = Depends(get_db)
 ):

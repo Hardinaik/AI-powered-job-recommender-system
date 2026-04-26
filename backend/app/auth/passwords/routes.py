@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends,Request
+from app.limiter import limiter
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from app.config import settings
@@ -13,6 +14,7 @@ router = APIRouter(prefix="/auth/passwords", tags=["Reset Password"])
 
 
 @router.post("/forgot-password")
+@limiter.limit("2/minute")
 async def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == body.email).first()
 
@@ -39,6 +41,7 @@ async def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get
 
 
 @router.post("/reset-password")
+@limiter.limit("2/minute")
 async def reset_password(body: ResetPasswordRequest, db: Session = Depends(get_db)):
     # 1. Verify JWT signature + expiry
     user_id = _verify_reset_token(body.token)

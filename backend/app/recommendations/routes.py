@@ -5,7 +5,8 @@ from typing import List, Optional
 import tempfile
 import numpy as np
 from rank_bm25 import BM25Okapi
-from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException
+from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException,Request
+from app.limiter import limiter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
@@ -338,6 +339,7 @@ def _build_fallback_response(jobs: list[Job], limit: int) -> list[RecJobResponse
 # Section 8 — Endpoint
 
 @router.post("/jobs", response_model=List[RecJobResponse])
+@limiter.limit("1/minute")
 async def get_recommended_jobs(
     use_profile:  bool                 = Query(False),
     domain_id:    Optional[int]        = Query(None),
