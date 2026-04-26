@@ -2,6 +2,7 @@ __pycache__/
 *.pyc
 venv/
 backend/.env
+frontend/job_portal/.env
 frontend/node_modules/
 *.ipynb
 *.pdf
