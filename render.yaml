@@ -23,9 +23,11 @@ services:
         value: 15
 
       # ── API ───────────────────────────────────────────────────────────
-      - key: API_KEY
+      - key: GROQ_API_KEY
         sync: false
 
+      - key: GEMINI_API_KEY
+        sync: false
       # ── Email / SMTP ──────────────────────────────────────────────────
       - key: SMTP_HOST
         sync: false
