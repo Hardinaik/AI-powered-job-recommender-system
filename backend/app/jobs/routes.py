@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException,status
+from fastapi import APIRouter, Depends, HTTPException,status,Request
+from app.limiter import limiter
 from sqlalchemy.orm import Session,joinedload
 from datetime import datetime, timezone
 from app.exceptions import LLMError, EmbeddingError
@@ -26,6 +27,7 @@ def get_industry_domains(db: Session = Depends(get_db),_: dict = Depends(get_cur
 
 
 @router.post("/post", response_model=JobPostResponse)
+@limiter.limit("2/minute")
 def create_job(
     job: JobPostRequest,
     db: Session = Depends(get_db),
