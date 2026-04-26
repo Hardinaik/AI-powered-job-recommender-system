@@ -68,9 +68,9 @@ class Resume(Base):
 
     resume_url = Column(Text,unique=True)
     resume_text=Column(Text,nullable=False)
-    work_embedding = Column(Vector(384))
-    skill_embedding = Column(Vector(384), nullable=False)
-    project_embedding=Column(Vector(384))
+    work_embedding = Column(Vector(768))
+    skill_embedding = Column(Vector(768), nullable=False)
+    project_embedding=Column(Vector(768))
 
     updated_at = Column(
         TIMESTAMP(timezone=True),
@@ -127,8 +127,8 @@ class Job(Base):
 
     recruiter_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"))
 
-    job_embedding = Column(Vector(384), nullable=False)
-    skill_embedding = Column(Vector(384), nullable=False)
+    job_embedding = Column(Vector(768), nullable=False)
+    skill_embedding = Column(Vector(768), nullable=False)
 
     posted_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 

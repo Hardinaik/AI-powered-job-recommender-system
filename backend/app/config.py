@@ -5,7 +5,8 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES:int = 60
     RESET_TOKEN_EXPIRE_MINUTES: int = 15
-    API_KEY:str
+    GROQ_API_KEY:str
+    GEMINI_API_KEY: str
     SMTP_HOST: str
     SMTP_PORT: int = 587
     SMTP_USER: str

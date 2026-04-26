@@ -90,9 +90,9 @@ This system combines **semantic vector search** and **BM25 keyword ranking**, fu
 - **FastAPI** — REST API framework
 - **SQLAlchemy ORM** — database models
 - **PostgreSQL + pgvector** — vector similarity search
-- **Sentence Transformers** — `all-MiniLM-L6-v2` (384-dim embeddings)
+- **Gemini Embedding API** — `gemini-embedding-001` via LangChain (768-dim embeddings)
 - **Groq API + LLaMA 3 8B Instant** — LLM-based structured extraction
-- **LangChain** — LLM orchestration
+- **LangChain** — LLM orchestration + Gemini embedding integration
 - **rank_bm25** — BM25 keyword ranking
 - **PyMuPDF** — PDF text extraction
 - **JWT Authentication** — role-based access control
@@ -158,16 +158,16 @@ AI-powered-job-recommender-system/
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
-## 🔧 Backend Setup
+### 🔧 Backend Setup
 
-### 1️⃣ Clone the Repository
+#### 1️⃣ Clone the Repository
 
 ```bash
 git clone https://github.com/Hardinaik/AI-powered-job-recommender-system.git
 cd AI-powered-job-recommender-system/backend
 ```
 
-### 2️⃣ Create & Activate Virtual Environment
+#### 2️⃣ Create & Activate Virtual Environment
 
 ```bash
 python -m venv venv
@@ -179,13 +179,13 @@ venv\Scripts\activate
 source venv/bin/activate
 ```
 
-### 3️⃣ Install Dependencies
+#### 3️⃣ Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 4️⃣ Configure Environment Variables
+#### 4️⃣ Configure Environment Variables
 
 Create a `.env` file inside the `backend/` folder:
 
@@ -195,6 +195,7 @@ SECRET_KEY=your_secret_key
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 GROQ_API_KEY=your_groq_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
 
 # Email (SMTP)
 SMTP_HOST=smtp.gmail.com
@@ -204,7 +205,7 @@ SMTP_PASSWORD=your_app_password
 FRONTEND_URL=http://localhost:3000
 ```
 
-### 5️⃣ Run Server
+#### 5️⃣ Run Server
 
 ```bash
 uvicorn app.main:app --reload
@@ -215,7 +216,7 @@ uvicorn app.main:app --reload
 
 ---
 
-## 💻 Frontend Setup
+### 💻 Frontend Setup
 
 ```bash
 cd ../frontend
@@ -324,14 +325,19 @@ Resume PDF
   └─► Text Extraction (PyMuPDF)
   └─► PII Removal
   └─► LLM Extraction (LLaMA 3 8B via Groq)
-        ├─ skills          → skill_embedding   (384-dim)
-        ├─ work summary    → work_embedding    (384-dim)
-        └─ project summary → project_embedding (384-dim)
+        ├─ skills          → skill_embedding   (768-dim)
+        ├─ work summary    → work_embedding    (768-dim)
+        └─ project summary → project_embedding (768-dim)
 
 Job Description
   └─► LLM Extraction (LLaMA 3 8B via Groq)
-        ├─ skills      → skill_embedding  (384-dim)
-        └─ job summary → job_embedding    (384-dim)
+        ├─ skills      → skill_embedding  (768-dim)
+        └─ job summary → job_embedding    (768-dim)
+
+Embeddings generated via:
+  └─► Google Gemini API — gemini-embedding-001 (768-dim, MRL truncated from 3072)
+      └─► Integrated via LangChain (GoogleGenerativeAIEmbeddings)
+      └─► task_type: retrieval_document for all stored embeddings
 
 Hybrid Ranking:
   ┌─ Semantic (pgvector weighted cosine similarity)
