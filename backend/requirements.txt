@@ -24,6 +24,8 @@ pydantic-settings
 aiosmtplib
 python-dotenv
 pydantic[email]
+jinja2
+aiofiles
 
 # Vector & Search
 pgvector
