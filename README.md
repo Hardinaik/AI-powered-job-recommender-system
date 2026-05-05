@@ -354,6 +354,64 @@ Hybrid Ranking:
 
 ---
 
+## 🏗️ System Architecture
+
+```mermaid
+flowchart TD
+    subgraph Client["🖥️ Client"]
+        ReactApp["⚛️ React App"]
+        Vercel["▲ Vercel"]
+    end
+
+    subgraph Backend["⚙️ Backend - Render"]
+        FastAPI["⚡ FastAPI"]
+        JWTAuth["🔒 JWT Auth"]
+        ResumeUpload["📄 Resume Upload"]
+        Applications["📋 Applications"]
+    end
+
+    subgraph AIServices["🤖 AI Services"]
+        PyMuPDF["📁 PyMuPDF"]
+        GroqLLaMA["⚡ Groq LLaMA3"]
+        GeminiEmbed["🔷 Gemini Embeddings"]
+    end
+
+    subgraph HybridSearch["🔍 Hybrid Search"]
+        BM25["📝 BM25 Keyword"]
+        pgvectorSearch["🔲 pgvector Search"]
+        RRFFusion["🔀 RRF Fusion"]
+    end
+
+    subgraph Database["🗄️ Database"]
+        PostgreSQL["🐘 PostgreSQL"]
+        pgvectorStore["📦 pgvector Store"]
+    end
+
+    subgraph Notifications["📧 Notifications"]
+        SMTPEmail["✉️ SMTP Email"]
+    end
+
+    ReactApp -->|HTTPS REST API| FastAPI
+    ResumeUpload -->|PDF upload| PyMuPDF
+    PyMuPDF -->|Raw resume text| GroqLLaMA
+    GroqLLaMA -->|Skills, work, projects| GeminiEmbed
+    GeminiEmbed -->|3 resume embeddings 768-dim| pgvectorStore
+    FastAPI -->|Job description text| GroqLLaMA
+    GroqLLaMA -->|Job skills + summary| GeminiEmbed
+    GeminiEmbed -->|2 job embeddings 768-dim| pgvectorStore
+    FastAPI -->|Keyword query| BM25
+    FastAPI -->|Weighted cosine query| pgvectorSearch
+    BM25 -->|40% BM25 ranking| RRFFusion
+    pgvectorSearch -->|60% semantic ranking| RRFFusion
+    RRFFusion -->|Match score 0-100| FastAPI
+    BM25 <-->|Job descriptions| PostgreSQL
+    pgvectorSearch <-->|Vector lookup| pgvectorStore
+    FastAPI <-->|Users, jobs, applications| PostgreSQL
+    FastAPI -->|Job application confirmation| SMTPEmail
+    FastAPI -->|Recruiter alert| SMTPEmail
+    FastAPI -->|Password reset link| SMTPEmail
+```
+
 ## 📈 Future Improvements
 
 - Admin dashboard
