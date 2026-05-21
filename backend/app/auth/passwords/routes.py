@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Request
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta,timezone
 
 from app.limiter import limiter
 from app.config import settings
@@ -38,7 +38,7 @@ async def forgot_password(
     token_record = PasswordResetToken(
         user_id    = user.user_id,
         token_hash = _hash_token(raw_token),
-        expires_at = datetime.utcnow() + timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES),
+        expires_at = datetime.now(timezone.utc) + timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES),
     )
     db.add(token_record)
     db.commit()
@@ -62,7 +62,7 @@ async def reset_password(
         PasswordResetToken.token_hash == _hash_token(body.token),
         PasswordResetToken.user_id    == user_id,
         PasswordResetToken.used       == False,
-        PasswordResetToken.expires_at >  datetime.utcnow(),
+        PasswordResetToken.expires_at >  datetime.now(timezone.utc),
     ).first()
 
     if not token_record:

@@ -1,4 +1,5 @@
 import os
+import magic
 from fastapi import Depends,UploadFile, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
@@ -19,6 +20,7 @@ def get_current_user_obj(
 ALLOWED_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 MAX_IMAGE_SIZE_MB = 5
 MAX_IMAGE_SIZE_BYTES = MAX_IMAGE_SIZE_MB * 1024 * 1024
+ALLOWED_MIME_TYPES = {"image/jpeg", "image/png"} 
 
 
 # ─── Validators ────────────────────────────────────────────────────────────────
@@ -32,6 +34,17 @@ def validate_image_extension(file: UploadFile):
         )
     return ext  
 
+async def validate_image_mime(file: UploadFile) -> None:
+    """Check actual file content, not just the filename extension."""
+    header = await file.read(2048)   # read first 2048 bytes for magic detection
+    await file.seek(0)               # reset so the rest of the app can read it
+
+    mime = magic.from_buffer(header, mime=True)
+    if mime not in ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file content. Only JPEG and PNG images are allowed.",
+        )
 
 async def validate_image_size(file: UploadFile):
     file.file.seek(0, 2)          

@@ -4,7 +4,7 @@ from app.database import get_db
 from app.utils import get_current_jobseeker
 from typing import List
 from uuid import UUID
-from .schemas import SaveJobResponse, JobResponse,ShowCompanyDetails
+from .schemas import SaveJobResponse, JobItem ,CompanyDetails
 from app.models import Job, SavedJob, Application,RecruiterProfile
 from sqlalchemy.exc import IntegrityError
 
@@ -91,7 +91,7 @@ def get_applied_job_ids(
 # --- VIEW CONTENT (GET FULL DETAILS) ---
 # Use these when the user clicks the "Saved" or "Applied" tabs
 
-@router.get("/saved-jobs/details", response_model=List[JobResponse])
+@router.get("/saved-jobs/details", response_model=List[JobItem])
 def get_saved_jobs_details(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_jobseeker)
@@ -104,7 +104,7 @@ def get_saved_jobs_details(
         .all()
     )
     return [
-        JobResponse(
+        JobItem(
             job_id=job.job_id,
             job_title=job.job_title,
             locations=[loc.name for loc in job.locations],
@@ -114,7 +114,7 @@ def get_saved_jobs_details(
         ) for job in jobs
     ]
 
-@router.get("/applied-jobs/details", response_model=List[JobResponse])
+@router.get("/applied-jobs/details", response_model=List[JobItem])
 def get_applied_jobs_details(
     db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_jobseeker)
@@ -127,7 +127,7 @@ def get_applied_jobs_details(
         .all()
     )
     return [
-        JobResponse(
+        JobItem(
             job_id=job.job_id,
             job_title=job.job_title,
             locations=[loc.name for loc in job.locations],
@@ -137,7 +137,7 @@ def get_applied_jobs_details(
         ) for job in jobs
     ]
 
-@router.get("/jobs/{job_id}/company-details", response_model=ShowCompanyDetails)
+@router.get("/jobs/{job_id}/company-details", response_model=CompanyDetails)
 def get_company_details(
     job_id: UUID,
     db: Session = Depends(get_db),
@@ -154,7 +154,7 @@ def get_company_details(
     if not profile:
         raise HTTPException(status_code=404, detail="Company details not found")
 
-    return ShowCompanyDetails(
+    return CompanyDetails(
         company_name=profile.company_name,
         website=profile.website,
         linkedin=profile.linkedin,

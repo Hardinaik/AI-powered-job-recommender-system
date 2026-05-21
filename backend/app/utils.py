@@ -34,7 +34,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 # ============================================================
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -107,3 +107,14 @@ def get_current_jobseeker(current_user: dict = Depends(get_current_user)):
             detail="Not a jobseeker"
         )
     return current_user
+
+
+# ============================================================
+#  BM_25 Tokens function
+# ============================================================
+
+
+def _tokenize(text: str) -> list[str]:
+    text = text.lower()
+    text = "".join(ch if ch.isalnum() or ch.isspace() else " " for ch in text)
+    return [t for t in text.split() if len(t) > 1]

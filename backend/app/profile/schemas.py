@@ -2,22 +2,15 @@ import re
 from pydantic import BaseModel, EmailStr, field_validator, model_validator, HttpUrl
 from typing import Optional, List
 from pydantic_core import PydanticCustomError
+from app.schemas import IdNamePair, CompanyDetails
 
 
-class IdNamePair(BaseModel):
-    id: int
-    name: str
 
 class JobSeekerProfileSchema(BaseModel):
     experience: int = 0
     preferred_domain: Optional[IdNamePair] = None
     preferred_locations: List[IdNamePair] = []
 
-class RecruiterProfileSchema(BaseModel):
-    company_name: Optional[str] = None
-    website: Optional[str] = None
-    linkedin: Optional[str] = None
-    description: Optional[str] = None
 
 class UserProfileResponse(BaseModel):
     fullname: str
@@ -25,7 +18,7 @@ class UserProfileResponse(BaseModel):
     user_role: str
     phone: Optional[str] = None 
     jobseeker_details: Optional[JobSeekerProfileSchema] = None
-    recruiter_details: Optional[RecruiterProfileSchema] = None
+    recruiter_details: Optional[CompanyDetails] = None
 
     class Config:
         from_attributes = True

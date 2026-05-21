@@ -7,7 +7,7 @@ from app.database import get_db
 from sqlalchemy.exc import IntegrityError
 from app.models import User, JobSeekerProfile,RecruiterProfile,Location
 from .schemas import UserProfileResponse,PersonalInfoUpdate,CompanyInfoUpdate,JobSeekerPrefUpdate,PasswordChange
-from .utils import get_current_user_obj,validate_image_extension,validate_image_size,detect_seniority_level 
+from .utils import get_current_user_obj,validate_image_extension,validate_image_size,detect_seniority_level #,validate_image_mime
 from app.utils import verify_password,hash_password
 
 
@@ -192,6 +192,7 @@ async def upload_profile_image(
     current_user: User = Depends(get_current_user_obj),
 ):
     ext = validate_image_extension(file)
+    # await validate_image_mime(file) 
     await validate_image_size(file)
 
     if current_user.profile_image_path and os.path.exists(current_user.profile_image_path):

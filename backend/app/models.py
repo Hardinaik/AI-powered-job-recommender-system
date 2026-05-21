@@ -2,7 +2,7 @@ from sqlalchemy import (
     Column, Text, Integer, String, Boolean, TIMESTAMP,
     ForeignKey, CheckConstraint
 )
-from sqlalchemy.dialects.postgresql import UUID, INET
+from sqlalchemy.dialects.postgresql import UUID, INET,ARRAY
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
@@ -137,6 +137,7 @@ class Job(Base):
 
     job_embedding   = Column(Vector(768), nullable=False)
     skill_embedding = Column(Vector(768), nullable=False)
+    bm25_tokens     = Column(ARRAY(String), nullable=True) 
 
     posted_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 

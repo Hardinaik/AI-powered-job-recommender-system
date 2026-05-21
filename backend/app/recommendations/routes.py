@@ -11,14 +11,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models import Job, Location, Resume, JobSeekerProfile, JobSeekerPreferredLocation
-from .schemas import RecJobResponse, RecommendationResponse
+from .schemas import JobItem, RecommendationResponse
 from app.profile.utils import detect_seniority_level
 from app.resume.utils import (
     validate_pdf_extension,
     validate_file_size,
     create_resume_embedding,
 )
-from app.utils import get_current_jobseeker
+from app.utils import get_current_jobseeker,_tokenize
 from app.exceptions import LLMError, EmbeddingError, PDFExtractionError
 
 
@@ -30,20 +30,19 @@ BM25_B:  float = 0.75
 RRF_K:   int   = 10
 
 
-# Section 1 — BM25
-
-def _tokenize(text: str) -> list[str]:
-    text = text.lower()
-    text = "".join(ch if ch.isalnum() or ch.isspace() else " " for ch in text)
-    return [t for t in text.split() if len(t) > 1]
-
+# Section 1 — BM25 - _tokenize function call
 
 def _rank_by_bm25(
     query_text: str,
     jobs:       list[Job],
 ) -> list[UUID]:
-    tokenized_corpus = [_tokenize(job.job_description or "") for job in jobs]
-    query_tokens     = _tokenize(query_text)
+    query_tokens = _tokenize(query_text)
+
+    # Use pre-stored tokens; fall back to tokenizing on the fly if column is null
+    tokenized_corpus = [
+        job.bm25_tokens if job.bm25_tokens else _tokenize(job.job_description or "")
+        for job in jobs
+    ]
 
     bm25   = BM25Okapi(tokenized_corpus, k1=BM25_K1, b=BM25_B)
     scores = bm25.get_scores(query_tokens).tolist()
@@ -54,7 +53,6 @@ def _rank_by_bm25(
         reverse=True,
     )
     return [jid for jid, _ in scored]
-
 
 # Section 2 — Semantic scoring
 
@@ -265,7 +263,7 @@ def _build_hybrid_response(
     jobs:    list[Job],
     vectors: ResumeVectors,
     limit:   int,
-) -> list[RecJobResponse]:
+) -> list[JobItem]:
     """RRF fusion of semantic + BM25 rankings."""
     semantic_ranking = _rank_by_semantic(
         jobs,
@@ -290,7 +288,7 @@ def _build_hybrid_response(
     job_map: dict[UUID, Job] = {job.job_id: job for job in jobs}
 
     return [
-        RecJobResponse(
+        JobItem(
             job_id          = jid,
             job_title       = job_map[jid].job_title,
             locations       = [loc.name for loc in job_map[jid].locations],
@@ -309,13 +307,13 @@ def _build_bm25_only_response(
     jobs:            list[Job],
     bm25_query_text: str,        # ← plain text, not ResumeVectors
     limit:           int,
-) -> list[RecJobResponse]:
+) -> list[JobItem]:
     """BM25-only ranking when semantic/embedding fails."""
     bm25_ranking = _rank_by_bm25(bm25_query_text, jobs)
     job_map: dict[UUID, Job] = {job.job_id: job for job in jobs}
 
     return [
-        RecJobResponse(
+        JobItem(
             job_id          = jid,
             job_title       = job_map[jid].job_title,
             locations       = [loc.name for loc in job_map[jid].locations],
@@ -330,10 +328,10 @@ def _build_bm25_only_response(
     ]
 
 
-def _build_fallback_response(jobs: list[Job], limit: int) -> list[RecJobResponse]:
+def _build_fallback_response(jobs: list[Job], limit: int) -> list[JobItem]:
     """Newest-first when no resume vectors available."""
     return [
-        RecJobResponse(
+        JobItem(
             job_id          = job.job_id,
             job_title       = job.job_title,
             locations       = [loc.name for loc in job.locations],

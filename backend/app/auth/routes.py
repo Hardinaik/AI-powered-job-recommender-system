@@ -164,8 +164,8 @@ def refresh(request: Request, db: Session = Depends(get_db)):
         key      = "refresh_token",
         value    = raw_new,
         httponly = True,
-        secure   = True,
-        samesite = "strict",
+        secure   = settings.IS_PRODUCTION,
+        samesite = "lax",
         max_age  = settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
     )
     return response

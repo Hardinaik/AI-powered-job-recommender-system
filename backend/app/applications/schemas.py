@@ -2,6 +2,7 @@
 from pydantic import BaseModel
 from typing import List,Optional
 from uuid import UUID
+from app.schemas import JobItem, CompanyDetails
 
 
 class SaveJobResponse(BaseModel):

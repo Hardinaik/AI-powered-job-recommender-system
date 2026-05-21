@@ -26,6 +26,8 @@ python-dotenv
 pydantic[email]
 jinja2
 aiofiles
+#python-magic==0.4.27
+
 
 # Vector & Search
 pgvector
