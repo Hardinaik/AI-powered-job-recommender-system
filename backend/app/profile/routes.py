@@ -7,8 +7,9 @@ from app.database import get_db
 from sqlalchemy.exc import IntegrityError
 from app.models import User, JobSeekerProfile,RecruiterProfile,Location
 from .schemas import UserProfileResponse,PersonalInfoUpdate,CompanyInfoUpdate,JobSeekerPrefUpdate,PasswordChange
-from .utils import get_current_user_obj,validate_image_extension,validate_image_size
+from .utils import get_current_user_obj,validate_image_extension,validate_image_size,detect_seniority_level 
 from app.utils import verify_password,hash_password
+
 
 
 
@@ -104,7 +105,8 @@ def update_job_preferences(
 
         if payload.experience is not None:
             profile.experience = payload.experience
-        
+            profile.seniority_level = detect_seniority_level(payload.experience)  # ← add this
+
         if payload.preferred_domain_id is not None:
             profile.preferred_domain_id = payload.preferred_domain_id
 
@@ -118,7 +120,6 @@ def update_job_preferences(
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail="Failed to update preferences")
-    
 
 @router.patch("/company")
 def update_company_details(

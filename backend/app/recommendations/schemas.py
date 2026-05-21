@@ -9,8 +9,14 @@ class RecJobResponse(BaseModel):
     locations: List[str]
     job_description: str
     min_experience: int
+    max_experience : int
     company_name:str
     match_score:float = Field(..., description="The AI-calculated similarity score (0-100)")
 
     class Config:
         from_attributes = True
+
+
+class RecommendationResponse(BaseModel):
+    ranking_mode: str  # "hybrid" | "bm25_only" | "fallback"
+    jobs: List[RecJobResponse]

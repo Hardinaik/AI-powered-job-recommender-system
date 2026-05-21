@@ -42,3 +42,10 @@ async def validate_image_size(file: UploadFile):
             status_code=400,
             detail=f"File too large. Maximum allowed size is {MAX_IMAGE_SIZE_MB} MB.",
         )
+
+
+def detect_seniority_level(exp: int) -> str:
+    if exp <= 1:   return "entry"
+    elif exp <= 4: return "mid"
+    elif exp <= 8: return "senior"
+    else:          return "lead"

@@ -398,7 +398,28 @@ body {
   color: var(--muted, #888);
   margin-top: 4px;
 }
- 
+
+
+.ranking-banner {
+  padding: 10px 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.ranking-banner--warning {
+  background-color: #fffbeb;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+}
+
+.ranking-banner--error {
+  background-color: #fef2f2;
+  border: 1px solid #ef4444;
+  color: #991b1b;
+}
+
 /* ── Responsive ──────────────────────────────────────────────────── */
  
 @media (max-width: 1100px) {

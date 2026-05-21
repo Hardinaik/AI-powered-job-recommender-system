@@ -155,3 +155,11 @@ def create_job_embedding(jd: str) -> tuple[list[float], list[float]]:
 
     return skill_embedding, job_embedding
 
+
+
+def detect_job_level(min_exp: int, max_exp: int) -> str:
+    avg = (min_exp + max_exp) / 2
+    if avg <= 1:   return "entry"
+    elif avg <= 4: return "mid"
+    elif avg <= 8: return "senior"
+    else:          return "lead"

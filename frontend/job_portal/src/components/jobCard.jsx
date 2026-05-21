@@ -75,7 +75,9 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
             <p className="company">
               {job.company_name}
               {job.locations?.length > 0 && <> &bull; {job.locations.join(", ")}</>}
-              {job.min_experience != null && <> &bull; {job.min_experience} yr{job.min_experience !== 1 ? "s" : ""} exp</>}
+              {job.min_experience != null && job.max_experience != null && (
+                <> &bull; {job.min_experience} - {job.max_experience} yr{job.max_experience !== 1 ? "s" : ""} exp</>
+              )}
             </p>
           </div>
         </div>

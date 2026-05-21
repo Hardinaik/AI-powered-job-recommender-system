@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import Select from "react-select";
 import JobCard from "../components/jobCard";
@@ -20,25 +20,25 @@ function JobListPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // --- Filter state ---
-  const [useProfile, setUseProfile] = useState(false);       // "Recommend using profile" checkbox
-  const [selectedFile, setSelectedFile] = useState(null);    // manual resume upload
-  const [domainId, setDomainId] = useState("");
-  const [selectedLocations, setSelectedLocations] = useState([]); // [{ value, label }, ...]
-  const [experience, setExperience] = useState("");
+  // Recommendation state
+  const [recommendedJobs, setRecommendedJobs] = useState([]);
+  const [isRecommended, setIsRecommended] = useState(false);
+  const [rankingMode, setRankingMode] = useState("hybrid"); 
+  const resumeWasIntended = useRef(false);
 
+  // Filter state
+  const [useProfile, setUseProfile] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [domainId, setDomainId] = useState("");
+  const [selectedLocations, setSelectedLocations] = useState([]);
+  const [experience, setExperience] = useState("");
   const [view, setView] = useState("all");
 
+  const isFirstRender = useRef(true);
   const experienceOptions = Array.from({ length: 31 }, (_, i) => i);
-
-  // react-select options derived from locations list
-  const locationOptions = locations.map((loc) => ({
-    value: loc.id,
-    label: loc.name,
-  }));
+  const locationOptions = locations.map((loc) => ({ value: loc.id, label: loc.name }));
 
   // ── 1. Initial Load ──
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const initData = async () => {
       setLoading(true);
@@ -55,9 +55,9 @@ function JobListPage() {
         setSavedJobIds(savedIdsRes.data);
         setAppliedJobIds(appliedIdsRes.data);
 
-        await applyFilters();
+        await fetchAllJobs();
       } catch (error) {
-        setError(getErrorMessage(error)); 
+        setError(getErrorMessage(error));
       } finally {
         setLoading(false);
       }
@@ -66,16 +66,25 @@ function JobListPage() {
   }, []);
 
   // ── 2. View Changes ──
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
     const fetchViewData = async () => {
       if (view === "all") {
-        applyFilters();
+        // Show recommended if applied this session, else simple jobs
+        if (isRecommended) {
+          setJobs(recommendedJobs);
+        } else {
+          await fetchAllJobs();
+        }
         return;
       }
 
       setLoading(true);
-      setError(null); 
+      setError(null);
       try {
         const endpoint =
           view === "saved"
@@ -85,7 +94,7 @@ function JobListPage() {
         const res = await api.get(endpoint);
         setJobs(res.data);
       } catch (error) {
-        setError(getErrorMessage(error));  
+        setError(getErrorMessage(error));
         setJobs([]);
       } finally {
         setLoading(false);
@@ -95,22 +104,27 @@ function JobListPage() {
     fetchViewData();
   }, [view]);
 
-  const handleStatusChange = (jobId, type) => {
-    if (type === "save") {
-      setSavedJobIds((prev) => [...new Set([...prev, jobId])]);
-    } else if (type === "unsave") {
-      setSavedJobIds((prev) => prev.filter((id) => id !== jobId));
-      // Remove card immediately if currently viewing Saved Jobs tab
-      if (view === "saved") {
-        setJobs((prev) => prev.filter((job) => job.job_id !== jobId));
-      }
-    } else if (type === "apply") {
-      setAppliedJobIds((prev) => [...new Set([...prev, jobId])]);
+  // ── Simple jobs fetch ──
+  const fetchAllJobs = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.get("/jobs/all");
+      setJobs(res.data);
+    } catch (error) {
+      setError(getErrorMessage(error));
+      setJobs([]);
+    } finally {
+      setLoading(false);
     }
   };
 
+  // ── Recommendation fetch ──
   const applyFilters = async () => {
     setLoading(true);
+    setError(null);
+    resumeWasIntended.current = useProfile || !!selectedFile;
+
     try {
       const formData = new FormData();
 
@@ -144,7 +158,13 @@ function JobListPage() {
         },
       });
 
-      setJobs(response.data);
+      const { ranking_mode, jobs: resultJobs } = response.data;
+
+      setRankingMode(ranking_mode);
+      setRecommendedJobs(resultJobs);
+      setIsRecommended(true);
+      setJobs(resultJobs);
+      setView("all");
     } catch (error) {
       setError(getErrorMessage(error));
       setJobs([]);
@@ -153,6 +173,7 @@ function JobListPage() {
     }
   };
 
+// 3. Update resetFilters — reset the ref
   const resetFilters = async () => {
     setDomainId("");
     setSelectedLocations([]);
@@ -160,25 +181,27 @@ function JobListPage() {
     setUseProfile(false);
     setSelectedFile(null);
     setError(null);
-    setLoading(true);
-   
-    try {
-      const formData = new FormData();
-      formData.append("use_profile", false);
-      const response = await api.post("/recommendations/jobs", formData, { params: {} });
-      setJobs(response.data);
-      setView("all");
-    } catch (error) {
-      console.error("Reset fetch failed", error);
-    } finally {
-      setLoading(false);
+    setIsRecommended(false);
+    setRecommendedJobs([]);
+    setRankingMode("hybrid");
+    resumeWasIntended.current = false;
+    setView("all");
+    await fetchAllJobs();
+  };
+
+  const handleStatusChange = (jobId, type) => {
+    if (type === "save") {
+      setSavedJobIds((prev) => [...new Set([...prev, jobId])]);
+    } else if (type === "unsave") {
+      setSavedJobIds((prev) => prev.filter((id) => id !== jobId));
+      if (view === "saved") {
+        setJobs((prev) => prev.filter((job) => job.job_id !== jobId));
+      }
+    } else if (type === "apply") {
+      setAppliedJobIds((prev) => [...new Set([...prev, jobId])]);
     }
   };
 
-  const viewLabel =
-    view === "all" ? "Job Listings" : view === "saved" ? "Saved Jobs" : "Applied Jobs";
-
-  // When profile mode is toggled on, clear manual filter state (and vice-versa)
   const handleProfileToggle = (checked) => {
     setUseProfile(checked);
     if (checked) {
@@ -189,36 +212,59 @@ function JobListPage() {
     }
   };
 
+  // ── Ranking mode banner ──
+  const getRankingBanner = () => {
+    if (!isRecommended || view !== "all") return null;
+    if (!resumeWasIntended.current) return null;
+
+    if (rankingMode === "bm25_only") {
+      return (
+        <ErrorBanner
+          message="AI matching is currently unavailable. Showing keyword-based recommendations instead."
+          type="warning"
+          onClose={() => setRankingMode("hybrid")}
+        />
+      );
+    }
+
+    if (rankingMode === "fallback" && selectedFile !== null) {
+      return (
+        <ErrorBanner
+          message="Recommendation service is unavailable. Showing latest jobs instead."
+          type="error"
+          onClose={() => setRankingMode("hybrid")}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  const viewLabel =
+    view === "all"
+      ? isRecommended ? "Recommended Jobs" : "Job Listings"
+      : view === "saved" ? "Saved Jobs" : "Applied Jobs";
+
   return (
     <div className="page-container">
 
       {/* ── Top Bar ── */}
       <div className="top-bar">
-        <button
-          className={`top-btn ${view === "all" ? "active" : ""}`}
-          onClick={() => setView("all")}
-        >
+        <button className={`top-btn ${view === "all" ? "active" : ""}`} onClick={() => setView("all")}>
           All Jobs
         </button>
-        <button
-          className={`top-btn ${view === "saved" ? "active" : ""}`}
-          onClick={() => setView("saved")}
-        >
+        <button className={`top-btn ${view === "saved" ? "active" : ""}`} onClick={() => setView("saved")}>
           Saved Jobs
         </button>
-        <button
-          className={`top-btn ${view === "applied" ? "active" : ""}`}
-          onClick={() => setView("applied")}
-        >
+        <button className={`top-btn ${view === "applied" ? "active" : ""}`} onClick={() => setView("applied")}>
           Applied Jobs
         </button>
-        <button className="profile-btn" onClick={() => navigate("/profile")}>
-          Profile
-        </button>
+        <button className="profile-btn" onClick={() => navigate("/profile")}>Profile</button>
         <Logout />
       </div>
 
       <ErrorBanner message={error} onClose={() => setError(null)} />
+
       {/* ── Body ── */}
       <div className="job-page">
 
@@ -227,7 +273,6 @@ function JobListPage() {
           <h3 className="filters-title">Filters</h3>
           <div className="filter-divider" />
 
-          {/* ── Recommend using profile ── */}
           <div className="filter-group">
             <div className="profile-rec-checkbox">
               <input
@@ -247,16 +292,10 @@ function JobListPage() {
 
           <div className="filter-divider" />
 
-          {/* ── Manual filters — disabled when profile mode is on ── */}
           <div className={useProfile ? "filters-manual disabled-filters" : "filters-manual"}>
-
             <div className="filter-group">
               <label>Industry Domain</label>
-              <select
-                value={domainId}
-                onChange={(e) => setDomainId(e.target.value)}
-                disabled={useProfile}
-              >
+              <select value={domainId} onChange={(e) => setDomainId(e.target.value)} disabled={useProfile}>
                 <option value="">All Domains</option>
                 {domains.map((item) => (
                   <option key={item.id} value={item.id}>{item.name}</option>
@@ -280,11 +319,7 @@ function JobListPage() {
 
             <div className="filter-group">
               <label>Experience (Years)</label>
-              <select
-                value={experience}
-                onChange={(e) => setExperience(e.target.value)}
-                disabled={useProfile}
-              >
+              <select value={experience} onChange={(e) => setExperience(e.target.value)} disabled={useProfile}>
                 <option value="">Any Experience</option>
                 {experienceOptions.map((exp) => (
                   <option key={exp} value={exp}>
@@ -292,10 +327,8 @@ function JobListPage() {
                   </option>
                 ))}
               </select>
-
             </div>
 
-            {/* Resume upload — manual mode only, no DB save */}
             <div className="filter-group">
               <label>Resume (optional)</label>
               <div className="upload-box">
@@ -317,7 +350,6 @@ function JobListPage() {
                 <p>{selectedFile ? selectedFile.name : "PDF, max 5 MB"}</p>
               </div>
             </div>
-
           </div>
 
           <div className="filter-actions">
@@ -341,6 +373,9 @@ function JobListPage() {
             )}
           </div>
 
+          {/* Ranking mode banner */}
+          {getRankingBanner()}
+
           {loading ? (
             <Loader />
           ) : jobs.length === 0 ? (
@@ -359,7 +394,6 @@ function JobListPage() {
             </div>
           )}
         </main>
-
       </div>
     </div>
   );

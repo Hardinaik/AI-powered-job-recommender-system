@@ -1,13 +1,22 @@
 from sqlalchemy import (
-    Column, Text, Integer, String, Boolean,TIMESTAMP,
+    Column, Text, Integer, String, Boolean, TIMESTAMP,
     ForeignKey, CheckConstraint
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, INET
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
+import enum
 
 from app.database import Base
+
+
+# ================= ENUMS =================
+class SeniorityLevel(str, enum.Enum):
+    entry  = "entry"   
+    mid    = "mid"
+    senior = "senior"
+    lead   = "lead"    
 
 
 # ================= USERS =================
@@ -21,16 +30,14 @@ class User(Base):
         ),
     )
 
-    user_id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
-
-    fullname = Column(Text, nullable=False)
-    email = Column(Text, unique=True, nullable=False)
-    password_hash = Column(Text, nullable=False)
-    phone = Column(Text, unique=True, nullable=True)
-    user_role = Column(Text, nullable=False)
-    profile_image_path=Column(Text,unique=True)
-
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    user_id            = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
+    fullname           = Column(Text, nullable=False)
+    email              = Column(Text, unique=True, nullable=False)
+    password_hash      = Column(Text, nullable=False)
+    user_role          = Column(Text, nullable=False)
+    phone              = Column(Text, unique=True, nullable=True)
+    profile_image_path = Column(Text, unique=True, nullable=True)
+    created_at         = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     # Relationships
     resume = relationship("Resume", back_populates="user", uselist=False, cascade="all, delete")
@@ -41,7 +48,6 @@ class User(Base):
         uselist=False,
         cascade="all, delete"
     )
-
     recruiter_profile = relationship(
         "RecruiterProfile",
         back_populates="user",
@@ -55,28 +61,25 @@ class User(Base):
         back_populates="users"
     )
 
-    jobs = relationship("Job", back_populates="recruiter", cascade="all, delete")
-    applications = relationship("Application", back_populates="job_seeker", cascade="all, delete")
-    savedjobs = relationship("SavedJob", back_populates="job_seeker", cascade="all, delete")
+    jobs          = relationship("Job",               back_populates="recruiter",  cascade="all, delete")
+    applications  = relationship("Application",       back_populates="job_seeker", cascade="all, delete")
+    savedjobs     = relationship("SavedJob",          back_populates="job_seeker", cascade="all, delete")
+
+    refresh_tokens        = relationship("RefreshToken",       back_populates="user", cascade="all, delete")
+    password_reset_tokens = relationship("PasswordResetToken", back_populates="user", cascade="all, delete")
 
 
 # ================= RESUME =================
 class Resume(Base):
     __tablename__ = "resume"
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
-
-    resume_url = Column(Text,unique=True)
-    resume_text=Column(Text,nullable=False)
-    work_embedding = Column(Vector(768))
-    skill_embedding = Column(Vector(768), nullable=False)
-    project_embedding=Column(Vector(768))
-
-    updated_at = Column(
-        TIMESTAMP(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now()
-    )
+    user_id           = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
+    resume_url        = Column(Text, unique=True, nullable=False)
+    resume_text       = Column(Text, nullable=False)
+    work_embedding    = Column(Vector(768), nullable=True)
+    skill_embedding   = Column(Vector(768), nullable=True)
+    project_embedding = Column(Vector(768), nullable=True)
+    updated_at        = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
     user = relationship("User", back_populates="resume")
 
@@ -85,7 +88,7 @@ class Resume(Base):
 class IndustryDomain(Base):
     __tablename__ = "industrydomains"
 
-    id = Column(Integer, primary_key=True)
+    id   = Column(Integer, primary_key=True)
     name = Column(String(100), unique=True, nullable=False)
 
     jobs = relationship("Job", back_populates="industry")
@@ -95,7 +98,7 @@ class IndustryDomain(Base):
 class Location(Base):
     __tablename__ = "locations"
 
-    id = Column(Integer, primary_key=True)
+    id   = Column(Integer, primary_key=True)
     name = Column(String(100), unique=True, nullable=False)
 
     jobs = relationship(
@@ -103,7 +106,6 @@ class Location(Base):
         secondary="job_locations",
         back_populates="locations"
     )
-
     users = relationship(
         "User",
         secondary="jobseeker_preferred_locations",
@@ -115,34 +117,47 @@ class Location(Base):
 class Job(Base):
     __tablename__ = "job"
 
+    __table_args__ = (
+        CheckConstraint("max_experience >= min_experience", name="chk_experience"),
+    )
+
     job_id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
 
-    job_title = Column(Text, nullable=False)
-    company_name = Column(String(100))
+    job_title          = Column(Text, nullable=False)
+    company_name       = Column(String(100), nullable=False)
+    industry_domain_id = Column(Integer, ForeignKey("industrydomains.id"), nullable=False)
 
-    industry_domain_id = Column(Integer, ForeignKey("industrydomains.id"))
+    job_level      = Column(Text, nullable=True)  
+    min_experience = Column(Integer, default=0)
+    max_experience = Column(Integer, nullable=False)
 
     job_description = Column(Text, nullable=False)
-    min_experience = Column(Integer, default=0)
+    is_remote       = Column(Boolean, default=False)
+    recruiter_id    = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
 
-    recruiter_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"))
-
-    job_embedding = Column(Vector(768), nullable=False)
+    job_embedding   = Column(Vector(768), nullable=False)
     skill_embedding = Column(Vector(768), nullable=False)
 
     posted_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
-    recruiter = relationship("User", back_populates="jobs")
-    industry = relationship("IndustryDomain", back_populates="jobs")
-
-    applications = relationship("Application", back_populates="job", cascade="all, delete")
-    savedjobs = relationship("SavedJob", back_populates="job", cascade="all, delete")
-
-    locations = relationship(
+    # Relationships
+    recruiter    = relationship("User",           back_populates="jobs")
+    industry     = relationship("IndustryDomain", back_populates="jobs")
+    applications = relationship("Application",    back_populates="job",  cascade="all, delete")
+    savedjobs    = relationship("SavedJob",        back_populates="job",  cascade="all, delete")
+    locations    = relationship(
         "Location",
         secondary="job_locations",
         back_populates="jobs"
     )
+
+
+# ================= JOB LOCATION =================
+class JobLocation(Base):
+    __tablename__ = "job_locations"
+
+    job_id      = Column(UUID(as_uuid=True), ForeignKey("job.job_id",   ondelete="CASCADE"), primary_key=True)
+    location_id = Column(Integer,            ForeignKey("locations.id", ondelete="CASCADE"), primary_key=True)
 
 
 # ================= APPLICATION =================
@@ -150,12 +165,11 @@ class Application(Base):
     __tablename__ = "applications"
 
     job_seeker_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
-    job_id = Column(UUID(as_uuid=True), ForeignKey("job.job_id", ondelete="CASCADE"), primary_key=True)
-
-    applied_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    job_id        = Column(UUID(as_uuid=True), ForeignKey("job.job_id",    ondelete="CASCADE"), primary_key=True)
+    applied_at    = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     job_seeker = relationship("User", back_populates="applications")
-    job = relationship("Job", back_populates="applications")
+    job        = relationship("Job",  back_populates="applications")
 
 
 # ================= SAVED JOB =================
@@ -163,40 +177,26 @@ class SavedJob(Base):
     __tablename__ = "savedjobs"
 
     job_seeker_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
-    job_id = Column(UUID(as_uuid=True), ForeignKey("job.job_id", ondelete="CASCADE"), primary_key=True)
-
-    saved_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    job_id        = Column(UUID(as_uuid=True), ForeignKey("job.job_id",    ondelete="CASCADE"), primary_key=True)
+    saved_at      = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
     job_seeker = relationship("User", back_populates="savedjobs")
-    job = relationship("Job", back_populates="savedjobs")
-
-
-# ================= JOB LOCATION =================
-class JobLocation(Base):
-    __tablename__ = "job_locations"
-
-    job_id = Column(UUID(as_uuid=True), ForeignKey("job.job_id", ondelete="CASCADE"), primary_key=True)
-    location_id = Column(Integer, ForeignKey("locations.id", ondelete="CASCADE"), primary_key=True)
+    job        = relationship("Job",  back_populates="savedjobs")
 
 
 # ================= JOBSEEKER PROFILE =================
 class JobSeekerProfile(Base):
     __tablename__ = "jobseeker_profile"
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
+    user_id             = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
+    experience          = Column(Integer, default=0)
+    seniority_level     = Column(Text, nullable=True) 
+    preferred_domain_id = Column(Integer, ForeignKey("industrydomains.id"), nullable=True)
+    wants_remote        = Column(Boolean, default=True)
+    created_at          = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    updated_at          = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    
-    experience = Column(Integer, default=0)
-    preferred_domain_id = Column(Integer, ForeignKey("industrydomains.id"))
-
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(
-        TIMESTAMP(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now()
-    )
-
-    user = relationship("User", back_populates="jobseeker_profile")
+    user             = relationship("User",          back_populates="jobseeker_profile")
     preferred_domain = relationship("IndustryDomain")
 
 
@@ -204,20 +204,13 @@ class JobSeekerProfile(Base):
 class RecruiterProfile(Base):
     __tablename__ = "recruiter_profile"
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
-
-    
-    company_name = Column(Text)
-    website = Column(Text)
-    linkedin=Column(Text)
-    description = Column(Text)
-
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    updated_at = Column(
-        TIMESTAMP(timezone=True),
-        server_default=func.now(),
-        onupdate=func.now()
-    )
+    user_id      = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
+    company_name = Column(Text, nullable=True)
+    website      = Column(Text, nullable=True)
+    linkedin     = Column(Text, nullable=True)
+    description  = Column(Text, nullable=True)
+    created_at   = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    updated_at   = Column(TIMESTAMP(timezone=True), server_default=func.now(), onupdate=func.now())
 
     user = relationship("User", back_populates="recruiter_profile")
 
@@ -226,28 +219,35 @@ class RecruiterProfile(Base):
 class JobSeekerPreferredLocation(Base):
     __tablename__ = "jobseeker_preferred_locations"
 
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
-    location_id = Column(Integer, ForeignKey("locations.id", ondelete="CASCADE"), primary_key=True)
+    user_id     = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
+    location_id = Column(Integer,            ForeignKey("locations.id",  ondelete="CASCADE"), primary_key=True)
 
 
+# ================= PASSWORD RESET TOKENS =================
 class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"
 
-    # Use UUID to match your User table style
-    id = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
-    
-    # Link to your User table using the correct ID column name
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
-    
-    # Store the HASH of the token, not the token itself
+    id         = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
+    user_id    = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
     token_hash = Column(Text, unique=True, nullable=False)
-    
-    # Timing logic
+    used       = Column(Boolean, default=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     expires_at = Column(TIMESTAMP(timezone=True), nullable=False)
-    
-    # Status
-    used = Column(Boolean, default=False)
 
-    # Relationship (Optional, but helpful)
-    user = relationship("User")
+    user = relationship("User", back_populates="password_reset_tokens")
+
+
+# ================= REFRESH TOKENS =================
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, server_default=func.gen_random_uuid())
+    user_id    = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    token_hash = Column(Text, unique=True, nullable=False)
+    is_revoked = Column(Boolean, default=False)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    expires_at = Column(TIMESTAMP(timezone=True), nullable=False)
+    user_agent = Column(Text, nullable=True)
+    ip_address = Column(INET, nullable=True)
+
+    user = relationship("User", back_populates="refresh_tokens")

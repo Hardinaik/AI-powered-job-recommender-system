@@ -5,13 +5,14 @@ from typing import List, Optional
 import tempfile
 import numpy as np
 from rank_bm25 import BM25Okapi
-from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException,Request
+from fastapi import APIRouter, Depends, Query, UploadFile, File, HTTPException, Request
 from app.limiter import limiter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models import Job, Location, Resume, JobSeekerProfile, JobSeekerPreferredLocation
-from .schemas import RecJobResponse
+from .schemas import RecJobResponse, RecommendationResponse
+from app.profile.utils import detect_seniority_level
 from app.resume.utils import (
     validate_pdf_extension,
     validate_file_size,
@@ -88,15 +89,14 @@ def _rank_by_semantic(
     elif not has_work and has_proj: w_skill, w_work, w_proj = 0.65, 0.00, 0.35
     else:                           w_skill, w_work, w_proj = 1.00, 0.00, 0.00
 
-    # Normalize resume vectors once — reused across all jobs
     norm_skills = _normalize(skills_vec)
-    norm_work = _normalize(work_vec)    if work_vec is not None else None
-    norm_proj = _normalize(project_vec) if project_vec is not None else None
+    norm_work   = _normalize(work_vec)    if work_vec    is not None else None
+    norm_proj   = _normalize(project_vec) if project_vec is not None else None
 
     scored = []
     for job in jobs:
-        norm_skill_emb = job.skill_embedding 
-        norm_job_emb   = job.job_embedding   
+        norm_skill_emb = job.skill_embedding
+        norm_job_emb   = job.job_embedding
 
         score = (
             w_skill * (float(np.dot(norm_skills, norm_skill_emb)) if norm_skill_emb is not None else 0.0)
@@ -117,9 +117,7 @@ def _reciprocal_rank_fusion(
     semantic_weight:  float = 0.60,
     bm25_weight:      float = 0.40,
 ) -> list[tuple[UUID, float]]:
-    """
-    Fuse two ranked lists via weighted RRF, rescaled to [0, 100].
-    """
+    """Fuse two ranked lists via weighted RRF, rescaled to [0, 100]."""
     all_ids   = list(dict.fromkeys(semantic_ranking + bm25_ranking))
     sem_rank  = {jid: i + 1 for i, jid in enumerate(semantic_ranking)}
     bm25_rank = {jid: i + 1 for i, jid in enumerate(bm25_ranking)}
@@ -137,8 +135,7 @@ def _reciprocal_rank_fusion(
     fused.sort(key=lambda x: x[1], reverse=True)
 
     if fused:
-        #top_score = fused[0][1] or 1.0
-        fused = [(jid, round((s) * 100, 2)) for jid, s in fused]
+        fused = [(jid, round(s * 100, 2)) for jid, s in fused]
 
     return fused
 
@@ -178,7 +175,6 @@ def _resolve_profile_vectors(target_user_id: UUID, db: Session) -> ResumeVectors
     )
 
 
-
 def _resolve_uploaded_vectors(resume_file: UploadFile, target_user_id: UUID) -> ResumeVectors:
     validate_pdf_extension(resume_file)
     validate_file_size(resume_file)
@@ -199,20 +195,18 @@ def _resolve_uploaded_vectors(resume_file: UploadFile, target_user_id: UUID) -> 
         bm25_query_text = bm25_text,
     )
 
+
 # Section 5 — Filters
-
 class JobFilters:
-    """Hard-filter parameters resolved from either the profile or manual input."""
-
     def __init__(
         self,
         domain_id:    int | None,
-        experience:   int | None,
         location_ids: list[int] | None,
+        job_level:    str | None,
     ):
         self.domain_id    = domain_id
-        self.experience   = experience
         self.location_ids = location_ids
+        self.job_level    = job_level
 
 
 def _resolve_profile_filters(target_user_id: UUID, db: Session) -> JobFilters:
@@ -232,42 +226,37 @@ def _resolve_profile_filters(target_user_id: UUID, db: Session) -> JobFilters:
 
     return JobFilters(
         domain_id    = profile.preferred_domain_id,
-        experience   = profile.experience,
         location_ids = location_ids,
+        job_level    = profile.seniority_level,
     )
-
 
 # Section 6 — Hard filter query
 
 def _apply_hard_filters(db: Session, filters: JobFilters) -> list[Job]:
-    
-    # Step 1: Build a subquery to get matching job_ids only
     id_query = select(Job.job_id)
 
     if filters.domain_id is not None:
         id_query = id_query.where(Job.industry_domain_id == filters.domain_id)
 
-    if filters.experience is not None:
-        id_query = id_query.where(Job.min_experience <= filters.experience)
+    if filters.job_level is not None:
+        id_query = id_query.where(Job.job_level == filters.job_level)
 
     if filters.location_ids:
         id_query = (
             id_query
             .join(Job.locations)
             .where(Location.id.in_(filters.location_ids))
-            .distinct()  # one job_id even if multiple locations matched
+            .distinct()
         )
 
     matched_ids = id_query.scalar_subquery()
 
-    # Step 2: Load full Job objects cleanly with locations eager loaded
     jobs = (
         db.query(Job)
         .options(joinedload(Job.locations))
         .filter(Job.job_id.in_(matched_ids))
         .all()
     )
-
     return jobs
 
 # Section 7 — Response builders
@@ -277,12 +266,7 @@ def _build_hybrid_response(
     vectors: ResumeVectors,
     limit:   int,
 ) -> list[RecJobResponse]:
-    """
-    1. Semantic ranking  — weighted cosine similarity (normalized vectors)
-    2. BM25 ranking      — keyword match on job descriptions
-    3. RRF fusion        — combine both rankings
-    4. Return top `limit` jobs
-    """
+    """RRF fusion of semantic + BM25 rankings."""
     semantic_ranking = _rank_by_semantic(
         jobs,
         vectors.skills_vec,
@@ -312,10 +296,36 @@ def _build_hybrid_response(
             locations       = [loc.name for loc in job_map[jid].locations],
             job_description = job_map[jid].job_description,
             min_experience  = job_map[jid].min_experience,
+            max_experience  = job_map[jid].max_experience,
             company_name    = job_map[jid].company_name,
             match_score     = score,
         )
         for jid, score in fused_scores[:limit]
+        if jid in job_map
+    ]
+
+
+def _build_bm25_only_response(
+    jobs:            list[Job],
+    bm25_query_text: str,        # ← plain text, not ResumeVectors
+    limit:           int,
+) -> list[RecJobResponse]:
+    """BM25-only ranking when semantic/embedding fails."""
+    bm25_ranking = _rank_by_bm25(bm25_query_text, jobs)
+    job_map: dict[UUID, Job] = {job.job_id: job for job in jobs}
+
+    return [
+        RecJobResponse(
+            job_id          = jid,
+            job_title       = job_map[jid].job_title,
+            locations       = [loc.name for loc in job_map[jid].locations],
+            job_description = job_map[jid].job_description,
+            min_experience  = job_map[jid].min_experience,
+            max_experience  = job_map[jid].min_experience,
+            company_name    = job_map[jid].company_name,
+            match_score     = 0.0,
+        )
+        for jid in bm25_ranking[:limit]
         if jid in job_map
     ]
 
@@ -329,6 +339,7 @@ def _build_fallback_response(jobs: list[Job], limit: int) -> list[RecJobResponse
             locations       = [loc.name for loc in job.locations],
             job_description = job.job_description,
             min_experience  = job.min_experience,
+            max_experience  = job.max_experience,
             company_name    = job.company_name,
             match_score     = 0.0,
         )
@@ -338,10 +349,10 @@ def _build_fallback_response(jobs: list[Job], limit: int) -> list[RecJobResponse
 
 # Section 8 — Endpoint
 
-@router.post("/jobs", response_model=List[RecJobResponse])
-@limiter.limit("1/minute")
+@router.post("/jobs", response_model=RecommendationResponse)
+@limiter.limit("5/minute")
 async def get_recommended_jobs(
-    request:Request,
+    request:      Request,
     use_profile:  bool                 = Query(False),
     domain_id:    Optional[int]        = Query(None),
     location_ids: Optional[List[int]]  = Query(None),
@@ -350,41 +361,58 @@ async def get_recommended_jobs(
     resume_file:  Optional[UploadFile] = File(None),
     db:           Session              = Depends(get_db),
     current_user: dict                 = Depends(get_current_jobseeker)
-    
 ):
     target_user_id = UUID(current_user["user_id"])
 
-    # 1. Resolve hard filters --------------------------------------------------
+    # 1. Resolve hard filters
     filters = (
         _resolve_profile_filters(target_user_id, db)
         if use_profile
         else JobFilters(
             domain_id    = domain_id,
-            experience   = experience,
             location_ids = location_ids,
+            job_level    = detect_seniority_level(experience) if experience is not None else None,
         )
     )
 
-    # 2. Fetch all jobs passing hard filters -----------------------------------
+    # 2. Fetch filtered jobs
     filtered_jobs = _apply_hard_filters(db, filters)
     if not filtered_jobs:
-        return []
+        return RecommendationResponse(ranking_mode="fallback", jobs=[])
 
-    # 3. Resolve resume vectors ------------------------------------------------
-    vectors: ResumeVectors | None = None
+    # 3. Resolve resume vectors
+    vectors:        ResumeVectors | None = None
+    semantic_failed: bool                = False
+    bm25_query_text: str                 = ""  # captured separately for fallback
+
     if use_profile:
-        vectors = _resolve_profile_vectors(target_user_id, db)
+        try:
+            vectors = _resolve_profile_vectors(target_user_id, db)
+            bm25_query_text = vectors.bm25_query_text if vectors else ""
+        except Exception:
+            semantic_failed = True
     elif resume_file:
         try:
             vectors = _resolve_uploaded_vectors(resume_file, target_user_id)
-        except (LLMError, PDFExtractionError, EmbeddingError) as e:
-            status = e.status_code if hasattr(e, "status_code") else 422
-            raise HTTPException(status_code=status, detail=str(e))
+            bm25_query_text = vectors.bm25_query_text if vectors else ""
+        except (LLMError, PDFExtractionError, EmbeddingError):
+            semantic_failed = True
 
-    # 4. Rank and return -------------------------------------------------------
+    # 4. Rank and return
     if vectors is not None:
-        return _build_hybrid_response(filtered_jobs, vectors, limit)
+        try:
+            jobs = _build_hybrid_response(filtered_jobs, vectors, limit)
+            return RecommendationResponse(ranking_mode="hybrid", jobs=jobs)
+        except Exception:
+            semantic_failed = True
+            bm25_query_text = vectors.bm25_query_text  # capture before losing reference
 
-    # Fallback — no resume, return newest jobs
+    # BM25 fallback — semantic failed but we still have resume text
+    if semantic_failed and bm25_query_text.strip():
+        jobs = _build_bm25_only_response(filtered_jobs, bm25_query_text, limit)
+        return RecommendationResponse(ranking_mode="bm25_only", jobs=jobs)
+
+    # Full fallback — no vectors at all, newest first
     filtered_jobs.sort(key=lambda j: j.posted_at, reverse=True)
-    return _build_fallback_response(filtered_jobs, limit)
+    jobs = _build_fallback_response(filtered_jobs, limit)
+    return RecommendationResponse(ranking_mode="fallback", jobs=jobs)

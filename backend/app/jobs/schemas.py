@@ -11,6 +11,7 @@ class JobPostRequest(BaseModel):
     industry_domain_id: int
     location_ids: List[int]
     min_experience: int
+    max_experience : int
     job_description: str
 
 
@@ -28,6 +29,7 @@ class JobResponse(BaseModel):
     locations: List[str]
     job_description: str
     min_experience: int
+    max_experience: int
     company_name:str
     
     class Config:

@@ -4,10 +4,11 @@ from sqlalchemy.orm import Session,joinedload
 from datetime import datetime, timezone
 from app.exceptions import LLMError, EmbeddingError
 from .schemas import JobPostRequest, JobPostResponse,JobResponse,DeleteJobResponse
+from app.recommendations.schemas import RecJobResponse
 from app.database import get_db
 from app.models import Job, Location, IndustryDomain
-from .utils import create_job_embedding
-from app.utils import get_current_recruiter,get_current_user
+from .utils import create_job_embedding,detect_job_level
+from app.utils import get_current_recruiter,get_current_user,get_current_jobseeker
 from typing import List
 from uuid import UUID
 
@@ -67,15 +68,17 @@ def create_job(
         raise HTTPException(status_code=503, detail=str(e))
         
     new_job = Job(
-        job_title=job.job_title,
-        company_name=job.company_name,
-        industry_domain_id=job.industry_domain_id,
-        min_experience=job.min_experience,
-        job_description=job.job_description,
-        recruiter_id=current_recruiter["user_id"],
-        skill_embedding=skill_embedding,
-        job_embedding=job_embedding,
-        posted_at=datetime.now(timezone.utc)
+        job_title          = job.job_title,
+        company_name       = job.company_name,
+        industry_domain_id = job.industry_domain_id,
+        min_experience     = job.min_experience,
+        max_experience     = job.max_experience,
+        job_level          = detect_job_level(job.min_experience, job.max_experience),  # ← auto detected
+        job_description    = job.job_description,
+        recruiter_id       = current_recruiter["user_id"],
+        skill_embedding    = skill_embedding,
+        job_embedding      = job_embedding,
+        posted_at          = datetime.now(timezone.utc)
     )
 
     # Attach many-to-many locations
@@ -109,7 +112,8 @@ def get_posted_jobs(
             company_name=job.company_name,
             locations=[loc.name for loc in job.locations],
             job_description=job.job_description,
-            min_experience=job.min_experience
+            min_experience=job.min_experience,
+            max_experience=job.max_experience
         )
         for job in jobs
     ]
@@ -141,3 +145,29 @@ def delete_job(
 
     return DeleteJobResponse(job_id=job_id)
 
+
+
+@router.get("/all", response_model=List[RecJobResponse])
+async def get_all_jobs(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_jobseeker)
+):
+    jobs = (
+        db.query(Job)
+        .options(joinedload(Job.locations))
+        .order_by(Job.posted_at.desc())
+        .all()
+    )
+    return [
+        RecJobResponse(
+            job_id          = job.job_id,
+            job_title       = job.job_title,
+            locations       = [loc.name for loc in job.locations],
+            job_description = job.job_description,
+            min_experience  = job.min_experience,
+            max_experience = job.max_experience,
+            company_name    = job.company_name,
+            match_score     = 0.0,
+        )
+        for job in jobs
+    ]

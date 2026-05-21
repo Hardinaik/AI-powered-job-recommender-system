@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { jwtDecode } from "jwt-decode";
+import { getAccessToken, getUserRole } from "./api/tokenStore";
 import HomePage from "./pages/HomePage";
 import JobListPage from "./pages/JobListPage";
 import RecruiterDashBoard from "./pages/RecruiterDashBoard";
@@ -7,7 +8,7 @@ import Profile from "./pages/ProfilePage";
 import ResetPassword from "./components/auth/ResetPassword";
 
 const isTokenValid = () => {
-  const token = localStorage.getItem("token");
+  const token = getAccessToken();  // ← reads from JS variable, not localStorage
   if (!token) return false;
 
   try {
@@ -19,22 +20,14 @@ const isTokenValid = () => {
 };
 
 const ProtectedRoute = ({ children }) => {
-  if (!isTokenValid()) {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    return <Navigate to="/" replace />;
-  }
+  if (!isTokenValid()) return <Navigate to="/" replace />;
   return children;
 };
 
 const RoleRoute = ({ children, allowedRole }) => {
-  if (!isTokenValid()) {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    return <Navigate to="/" replace />;
-  }
+  if (!isTokenValid()) return <Navigate to="/" replace />;
 
-  const role = localStorage.getItem("role");
+  const role = getUserRole();  // ← reads from JS variable, not localStorage
   if (role !== allowedRole) return <Navigate to="/" replace />;
   return children;
 };
