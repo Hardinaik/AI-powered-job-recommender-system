@@ -8,11 +8,10 @@ import Loader from "../components/loader";
 import ErrorBanner from "../components/ErrorBanner";
 import { getErrorMessage } from "../utils/errorUtils";
 import { FaPlus, FaBriefcase } from "react-icons/fa";
-import axios from "axios";
 import Select from "react-select";
-import { getAccessToken } from "../api/tokenStore";
+import api from "../api/axios";
 
-const API_BASE = "http://127.0.0.1:8000";
+
 
 const RecruiterDashBoard = () => {
   const navigate = useNavigate();
@@ -35,40 +34,33 @@ const RecruiterDashBoard = () => {
   });
 
   useEffect(() => {
-    const token = getAccessToken();
-    fetchLocations(token);
-    fetchDomains(token);
-    fetchJobs(token);
+    fetchLocations();
+    fetchDomains();
+    fetchJobs();
   }, []);
 
-  const fetchLocations = async (token) => {
+  const fetchLocations = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/jobs/locations`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get("/jobs/locations");
       setLocations(res.data);
     } catch (err) {
       setError(getErrorMessage(err));
     }
   };
 
-  const fetchDomains = async (token) => {
-    try {
-      const res = await axios.get(`${API_BASE}/jobs/industry-domains`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setDomains(res.data);
-    } catch (err) {
-      setError(getErrorMessage(err));
-    }
-  };
+  const fetchDomains = async () => {
+      try {
+        const res = await api.get("/jobs/industry-domains");
+        setDomains(res.data);
+      } catch (err) {
+        setError(getErrorMessage(err));
+      }
+    };
 
-  const fetchJobs = async (token) => {
+    const fetchJobs = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/jobs/postedjobs`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await api.get("/jobs/postedjobs");
       setJobs(res.data);
     } catch (err) {
       setError(getErrorMessage(err));
@@ -90,43 +82,39 @@ const RecruiterDashBoard = () => {
     e.preventDefault();
 
     if (!formData.company_name || !formData.job_title) {
-      alert("Please fill all required fields.");
+      setError("Please fill in company name and job title.");
       return;
     }
     if (formData.location_ids.length === 0) {
-      alert("Please select at least one location.");
+      setError("Please select at least one location.");
       return;
     }
     if (formData.industry_domain_id === "") {
-      alert("Please select industry domain.");
+      setError("Please select an industry domain.");
       return;
     }
     if (formData.min_experience === "") {
-      alert("Please select minimum experience.");
+      setError("Please select minimum experience.");
       return;
     }
     if (formData.max_experience === "") {
-      alert("Please select maximum experience.");
+      setError("Please select maximum experience.");
       return;
     }
     if (Number(formData.max_experience) < Number(formData.min_experience)) {
-      alert("Maximum experience must be greater than or equal to minimum experience.");
+      setError("Maximum experience must be ≥ minimum experience.");
       return;
     }
 
     try {
       setLoading(true);
-      const token = getAccessToken();
-      await axios.post(
-        `${API_BASE}/jobs/post`,
-        {
-          ...formData,
-          industry_domain_id: Number(formData.industry_domain_id),
-          min_experience:     Number(formData.min_experience),
-          max_experience:     Number(formData.max_experience),
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      
+      await api.post("/jobs/post", {
+        ...formData,
+        industry_domain_id: Number(formData.industry_domain_id),
+        min_experience: Number(formData.min_experience),
+        max_experience: Number(formData.max_experience),
+      });
 
       setFormData({
         company_name: "",
@@ -138,7 +126,7 @@ const RecruiterDashBoard = () => {
         job_description: "",
       });
 
-      await fetchJobs(token);
+      await fetchJobs();
       setSubmitSuccess(true);
       setTimeout(() => setSubmitSuccess(false), 3000);
     } catch (err) {
@@ -155,10 +143,7 @@ const RecruiterDashBoard = () => {
   const deleteJob = async (job_id) => {
     try {
       setLoading(true);
-      const token = getAccessToken();
-      await axios.delete(`${API_BASE}/jobs/${job_id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await api.delete(`/jobs/${job_id}`);
       setJobs((prev) => prev.filter((job) => job.job_id !== job_id));
     } catch (err) {
       setError(getErrorMessage(err));

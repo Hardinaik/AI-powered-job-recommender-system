@@ -12,28 +12,7 @@
   justify-content: center;
 }
 
-/* ── Design Tokens ───────────────────────────────────────────────── */
 
-:root {
-  --border: #e4e7f0;
-  --border-focus: #3b6ef6;
-  --text-primary: #0f1623;
-  --text-secondary: #5a6282;
-  --text-muted: #9299b0;
-  --accent: #3b6ef6;
-  --accent-hover: #2a5ce0;
-  --accent-light: #eef2ff;
-  --accent-mid: #c7d4fd;
-  --error-bg: #fff1f2;
-  --error-text: #be123c;
-  --error-border: #fecdd3;
-  --shadow-sm: 0 1px 3px rgba(15, 22, 35, 0.06);
-  --shadow-md: 0 4px 24px rgba(15, 22, 35, 0.10);
-  --shadow-blue: 0 4px 20px rgba(59, 110, 246, 0.22);
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 18px;
-}
 
 /* ── Card ────────────────────────────────────────────────────────── */
 

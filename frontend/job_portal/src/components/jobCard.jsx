@@ -2,45 +2,47 @@
 import { useState, useEffect } from "react";
 import { FaBookmark, FaBuilding } from "react-icons/fa";
 import api from "../api/axios";
+import "./jobCard.css";
 import CompanyCard from "./CompanyCard";
 import ApplyModal from "./ApplyModal";       
-import "./jobCard.css";
+import ErrorBanner from "./ErrorBanner";
 
 function JobCard({ job, isSaved, isApplied, onStatusChange }) {
   const [showDetails, setShowDetails] = useState(false);
   const [saved, setSaved] = useState(isSaved);
   const [applied, setApplied] = useState(isApplied);
   const [showCompany, setShowCompany] = useState(false);
-  const [showApplyModal, setShowApplyModal] = useState(false);  
+  const [showApplyModal, setShowApplyModal] = useState(false); 
+  const [cardError, setCardError] = useState(""); 
 
   useEffect(() => { setSaved(isSaved); }, [isSaved]);
   useEffect(() => { setApplied(isApplied); }, [isApplied]);
 
-  const handleSaveToggle = async () => {
+    const handleSaveToggle = async () => {
     if (saved) {
       try {
         await api.delete(`/applications/jobs/${job.job_id}/unsave`);
         setSaved(false);
-        if (onStatusChange) onStatusChange(job.job_id, "unsave");
+        onStatusChange?.(job.job_id, "unsave");
       } catch (error) {
         if (error.response?.status === 404) {
           setSaved(false);
-          if (onStatusChange) onStatusChange(job.job_id, "unsave");
+          onStatusChange?.(job.job_id, "unsave");
         } else {
-          alert(error.response?.data?.detail || "Failed to unsave job");
+          setCardError(error.response?.data?.detail || "Failed to unsave job");
         }
       }
     } else {
       try {
         await api.post(`/applications/jobs/${job.job_id}/save`);
         setSaved(true);
-        if (onStatusChange) onStatusChange(job.job_id, "save");
+        onStatusChange?.(job.job_id, "save");
       } catch (error) {
         if (error.response?.status === 409) {
           setSaved(true);
-          if (onStatusChange) onStatusChange(job.job_id, "save");
+          onStatusChange?.(job.job_id, "save");
         } else {
-          alert(error.response?.data?.detail || "Failed to save job");
+          setCardError(error.response?.data?.detail || "Failed to save job");
         }
       }
     }
@@ -62,6 +64,14 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
   return (
     <>
       <div className="job-card">
+
+        {cardError && (
+          <ErrorBanner
+            message={cardError}
+            onClose={() => setCardError("")}
+            type="error"
+          />
+        )}
 
         {/* Match Badge */}
         {job.match_score > 0 && (
