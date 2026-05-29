@@ -10,6 +10,8 @@ import "./JobListPage.css";
 import ErrorBanner from "../components/ErrorBanner";
 import { getErrorMessage } from "../utils/errorUtils";
 
+const LIMIT = 20;
+
 function JobListPage() {
   const navigate = useNavigate();
   const [domains, setDomains] = useState([]);
@@ -18,12 +20,17 @@ function JobListPage() {
   const [savedJobIds, setSavedJobIds] = useState([]);
   const [appliedJobIds, setAppliedJobIds] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
+
+  // Pagination state
+  const [totalJobs, setTotalJobs] = useState(0);
+  const [currentSkip, setCurrentSkip] = useState(0);
 
   // Recommendation state
   const [recommendedJobs, setRecommendedJobs] = useState([]);
   const [isRecommended, setIsRecommended] = useState(false);
-  const [rankingMode, setRankingMode] = useState("hybrid"); 
+  const [rankingMode, setRankingMode] = useState("hybrid");
   const resumeWasIntended = useRef(false);
 
   // Filter state
@@ -55,9 +62,10 @@ function JobListPage() {
         setSavedJobIds(savedIdsRes.data);
         setAppliedJobIds(appliedIdsRes.data);
 
-        await fetchAllJobs();
+        await fetchAllJobs(0, false);
       } catch (error) {
         setError(getErrorMessage(error));
+        setJobs([]);
       } finally {
         setLoading(false);
       }
@@ -74,11 +82,10 @@ function JobListPage() {
 
     const fetchViewData = async () => {
       if (view === "all") {
-        // Show recommended if applied this session, else simple jobs
         if (isRecommended) {
-          setJobs(recommendedJobs);
+          setJobs(Array.isArray(recommendedJobs) ? recommendedJobs : []);
         } else {
-          await fetchAllJobs();
+          await fetchAllJobs(0, false);
         }
         return;
       }
@@ -92,7 +99,7 @@ function JobListPage() {
             : "/applications/applied-jobs/details";
 
         const res = await api.get(endpoint);
-        setJobs(res.data);
+        setJobs(Array.isArray(res.data) ? res.data : []);
       } catch (error) {
         setError(getErrorMessage(error));
         setJobs([]);
@@ -104,19 +111,46 @@ function JobListPage() {
     fetchViewData();
   }, [view]);
 
-  // ── Simple jobs fetch ──
-  const fetchAllJobs = async () => {
-    setLoading(true);
+  // ── Fetch paginated jobs ──
+  const fetchAllJobs = async (skip = 0, append = false) => {
+    // Use loadingMore for append so the full-page spinner doesn't show
+    if (append) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
+
     try {
-      const res = await api.get("/jobs/all");
-      setJobs(res.data);
+      const res = await api.get("/jobs/all", {
+        params: { skip, limit: LIMIT },
+      });
+
+      const raw = res.data;
+
+      // Handle both plain array and paginated {total, skip, limit, jobs:[]} shape
+      const newJobs = Array.isArray(raw)
+        ? raw
+        : Array.isArray(raw.jobs)
+        ? raw.jobs
+        : [];
+      const total = raw.total ?? newJobs.length;
+
+      setTotalJobs(total);
+      setCurrentSkip(skip + newJobs.length);
+      setJobs((prev) => (append ? [...prev, ...newJobs] : newJobs));
     } catch (error) {
       setError(getErrorMessage(error));
-      setJobs([]);
+      if (!append) setJobs([]);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
+  };
+
+  // ── Load More handler ──
+  const handleLoadMore = () => {
+    fetchAllJobs(currentSkip, true);
   };
 
   // ── Recommendation fetch ──
@@ -158,7 +192,14 @@ function JobListPage() {
         },
       });
 
-      const { ranking_mode, jobs: resultJobs } = response.data;
+      // Safely extract from recommendation response shape: {ranking_mode, jobs:[]}
+      const raw = response.data;
+      const resultJobs = Array.isArray(raw)
+        ? raw
+        : Array.isArray(raw.jobs)
+        ? raw.jobs
+        : [];
+      const ranking_mode = raw.ranking_mode ?? "fallback";
 
       setRankingMode(ranking_mode);
       setRecommendedJobs(resultJobs);
@@ -173,7 +214,7 @@ function JobListPage() {
     }
   };
 
-// 3. Update resetFilters — reset the ref
+  // ── Reset filters ──
   const resetFilters = async () => {
     setDomainId("");
     setSelectedLocations([]);
@@ -185,8 +226,10 @@ function JobListPage() {
     setRecommendedJobs([]);
     setRankingMode("hybrid");
     resumeWasIntended.current = false;
+    setTotalJobs(0);
+    setCurrentSkip(0);
     setView("all");
-    await fetchAllJobs();
+    await fetchAllJobs(0, false);
   };
 
   const handleStatusChange = (jobId, type) => {
@@ -242,24 +285,44 @@ function JobListPage() {
 
   const viewLabel =
     view === "all"
-      ? isRecommended ? "Recommended Jobs" : "Job Listings"
-      : view === "saved" ? "Saved Jobs" : "Applied Jobs";
+      ? isRecommended
+        ? "Recommended Jobs"
+        : "Job Listings"
+      : view === "saved"
+      ? "Saved Jobs"
+      : "Applied Jobs";
+
+  // How many more jobs can be loaded
+  const remaining = totalJobs - currentSkip;
+  const showLoadMore =
+    view === "all" && !isRecommended && !loading && remaining > 0;
 
   return (
     <div className="page-container">
 
       {/* ── Top Bar ── */}
       <div className="top-bar">
-        <button className={`top-btn ${view === "all" ? "active" : ""}`} onClick={() => setView("all")}>
+        <button
+          className={`top-btn ${view === "all" ? "active" : ""}`}
+          onClick={() => setView("all")}
+        >
           All Jobs
         </button>
-        <button className={`top-btn ${view === "saved" ? "active" : ""}`} onClick={() => setView("saved")}>
+        <button
+          className={`top-btn ${view === "saved" ? "active" : ""}`}
+          onClick={() => setView("saved")}
+        >
           Saved Jobs
         </button>
-        <button className={`top-btn ${view === "applied" ? "active" : ""}`} onClick={() => setView("applied")}>
+        <button
+          className={`top-btn ${view === "applied" ? "active" : ""}`}
+          onClick={() => setView("applied")}
+        >
           Applied Jobs
         </button>
-        <button className="profile-btn" onClick={() => navigate("/profile")}>Profile</button>
+        <button className="profile-btn" onClick={() => navigate("/profile")}>
+          Profile
+        </button>
         <Logout />
       </div>
 
@@ -285,7 +348,7 @@ function JobListPage() {
             </div>
             {useProfile && (
               <p className="profile-rec-hint">
-                Filters & resume will be pulled from your saved profile.
+                Filters &amp; resume will be pulled from your saved profile.
               </p>
             )}
           </div>
@@ -295,10 +358,16 @@ function JobListPage() {
           <div className={useProfile ? "filters-manual disabled-filters" : "filters-manual"}>
             <div className="filter-group">
               <label>Industry Domain</label>
-              <select value={domainId} onChange={(e) => setDomainId(e.target.value)} disabled={useProfile}>
+              <select
+                value={domainId}
+                onChange={(e) => setDomainId(e.target.value)}
+                disabled={useProfile}
+              >
                 <option value="">All Domains</option>
                 {domains.map((item) => (
-                  <option key={item.id} value={item.id}>{item.name}</option>
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -319,7 +388,11 @@ function JobListPage() {
 
             <div className="filter-group">
               <label>Experience (Years)</label>
-              <select value={experience} onChange={(e) => setExperience(e.target.value)} disabled={useProfile}>
+              <select
+                value={experience}
+                onChange={(e) => setExperience(e.target.value)}
+                disabled={useProfile}
+              >
                 <option value="">Any Experience</option>
                 {experienceOptions.map((exp) => (
                   <option key={exp} value={exp}>
@@ -353,7 +426,11 @@ function JobListPage() {
           </div>
 
           <div className="filter-actions">
-            <button className="apply-btn" onClick={applyFilters} disabled={loading}>
+            <button
+              className="apply-btn"
+              onClick={applyFilters}
+              disabled={loading}
+            >
               {loading ? "Searching…" : "Apply Filters"}
             </button>
             <button className="reset-btn" onClick={resetFilters}>
@@ -368,7 +445,9 @@ function JobListPage() {
             <h3 className="job-list-title">{viewLabel}</h3>
             {!loading && (
               <span className="job-list-badge">
-                {jobs.length} listing{jobs.length !== 1 ? "s" : ""}
+                {view === "all" && !isRecommended
+                  ? `${totalJobs} listing${totalJobs !== 1 ? "s" : ""}`
+                  : `${jobs.length} listing${jobs.length !== 1 ? "s" : ""}`}
               </span>
             )}
           </div>
@@ -381,17 +460,42 @@ function JobListPage() {
           ) : jobs.length === 0 ? (
             <div className="empty-state">No jobs found</div>
           ) : (
-            <div className="job-list-items">
-              {jobs.map((job) => (
-                <JobCard
-                  key={job.job_id}
-                  job={job}
-                  isSaved={savedJobIds.includes(job.job_id)}
-                  isApplied={appliedJobIds.includes(job.job_id)}
-                  onStatusChange={handleStatusChange}
-                />
-              ))}
-            </div>
+            <>
+              <div className="job-list-items">
+                {jobs.map((job) => (
+                  <JobCard
+                    key={job.job_id}
+                    job={job}
+                    isSaved={savedJobIds.includes(job.job_id)}
+                    isApplied={appliedJobIds.includes(job.job_id)}
+                    onStatusChange={handleStatusChange}
+                  />
+                ))}
+              </div>
+
+              {/* Load More button */}
+              {showLoadMore && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    marginTop: "20px",
+                    paddingBottom: "8px",
+                  }}
+                >
+                  <button
+                    className="apply-btn"
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    style={{ padding: "10px 32px", minWidth: "200px" }}
+                  >
+                    {loadingMore
+                      ? "Loading…"
+                      : `Load More (${remaining} remaining)`}
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>

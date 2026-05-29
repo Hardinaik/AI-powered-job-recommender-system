@@ -137,7 +137,7 @@ class Job(Base):
 
     job_embedding   = Column(Vector(768), nullable=False)
     skill_embedding = Column(Vector(768), nullable=False)
-    bm25_tokens     = Column(ARRAY(String), nullable=True) 
+    bm25_tokens     = Column(ARRAY(String), nullable=False) 
 
     posted_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
 
