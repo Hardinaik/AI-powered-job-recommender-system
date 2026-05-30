@@ -427,7 +427,7 @@ function JobListPage() {
 
           <div className="filter-actions">
             <button
-              className="apply-btn"
+              className="filter-apply-btn"
               onClick={applyFilters}
               disabled={loading}
             >
@@ -484,7 +484,7 @@ function JobListPage() {
                   }}
                 >
                   <button
-                    className="apply-btn"
+                    className="filter-apply-btn"
                     onClick={handleLoadMore}
                     disabled={loadingMore}
                     style={{ padding: "10px 32px", minWidth: "200px" }}

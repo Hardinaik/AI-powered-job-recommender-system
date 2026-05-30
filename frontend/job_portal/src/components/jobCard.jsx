@@ -4,7 +4,7 @@ import { FaBookmark, FaBuilding } from "react-icons/fa";
 import api from "../api/axios";
 import "./jobCard.css";
 import CompanyCard from "./CompanyCard";
-import ApplyModal from "./ApplyModal";       
+import ApplyModal from "./ApplyModal";
 import ErrorBanner from "./ErrorBanner";
 
 function JobCard({ job, isSaved, isApplied, onStatusChange }) {
@@ -12,13 +12,13 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
   const [saved, setSaved] = useState(isSaved);
   const [applied, setApplied] = useState(isApplied);
   const [showCompany, setShowCompany] = useState(false);
-  const [showApplyModal, setShowApplyModal] = useState(false); 
-  const [cardError, setCardError] = useState(""); 
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [cardError, setCardError] = useState("");
 
   useEffect(() => { setSaved(isSaved); }, [isSaved]);
   useEffect(() => { setApplied(isApplied); }, [isApplied]);
 
-    const handleSaveToggle = async () => {
+  const handleSaveToggle = async () => {
     if (saved) {
       try {
         await api.delete(`/applications/jobs/${job.job_id}/unsave`);
@@ -48,13 +48,11 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
     }
   };
 
-  // Opens the modal instead of directly calling the API
   const handleApplyClick = () => {
     if (applied) return;
     setShowApplyModal(true);
   };
 
-  // Called by ApplyModal after successful submission
   const handleApplied = (jobId) => {
     setApplied(true);
     setShowApplyModal(false);
@@ -98,16 +96,21 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
         <div className="job-description">
           <div className="jd-header">
             <span className="jd-label">Job Description</span>
-             <div className="jd-actions">
+            <div className="jd-actions">
               <button
+                type="button"
                 className="company-btn"
                 onClick={() => setShowCompany(true)}
                 title="View company details"
               >
-                <FaBuilding className="company-btn-icon" />
+                <FaBuilding size={12} color="currentColor" style={{ display: "block", flexShrink: 0 }} />
                 Company Info
               </button>
-              <button className="details-btn" onClick={() => setShowDetails(!showDetails)}>
+              <button
+                type="button"
+                className="details-btn"
+                onClick={() => setShowDetails(!showDetails)}
+              >
                 {showDetails ? "Hide Details" : "View Details"}
               </button>
             </div>
@@ -118,6 +121,7 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
         {/* Footer */}
         <div className="job-card-footer">
           <button
+            type="button"
             className={`apply-btn ${applied ? "applied" : ""}`}
             onClick={handleApplyClick}
             disabled={applied}
@@ -125,9 +129,8 @@ function JobCard({ job, isSaved, isApplied, onStatusChange }) {
             {applied ? "Applied" : "Apply Now"}
           </button>
 
-          
-
           <button
+            type="button"
             className={`save-btn ${saved ? "saved" : ""}`}
             onClick={handleSaveToggle}
             aria-label={saved ? "Unsave job" : "Save job"}

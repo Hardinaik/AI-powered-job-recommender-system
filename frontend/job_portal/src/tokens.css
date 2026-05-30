@@ -29,7 +29,11 @@
   --radius-md: 14px;
   --radius-lg: 18px;
 
-  /* Real font stack instead of bare "sans-serif" (fixes issue 7) */
-  --font-body: "Inter", system-ui, -apple-system, sans-serif;
-  --font-heading: "Inter", system-ui, -apple-system, sans-serif;
+  --font-body: "Inter", system-ui, sans-serif;
+  --font-heading: "Inter", system-ui, sans-serif;
+
+
+  --error-bg: #fef2f2;
+  --error-text: #991b1b;
+  --error-border: #fecaca;
 }

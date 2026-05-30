@@ -319,7 +319,7 @@ def _build_bm25_only_response(
             locations       = [loc.name for loc in job_map[jid].locations],
             job_description = job_map[jid].job_description,
             min_experience  = job_map[jid].min_experience,
-            max_experience  = job_map[jid].min_experience,
+            max_experience  = job_map[jid].max_experience,
             company_name    = job_map[jid].company_name,
             match_score     = 0.0,
         )
