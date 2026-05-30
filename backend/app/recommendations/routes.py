@@ -355,7 +355,7 @@ async def get_recommended_jobs(
     domain_id:    Optional[int]        = Query(None),
     location_ids: Optional[List[int]]  = Query(None),
     experience:   Optional[int]        = Query(None),
-    limit:        int                  = Query(default=20, ge=1, le=100),
+    limit:        int                  = Query(default=10, ge=1, le=100),
     resume_file:  Optional[UploadFile] = File(None),
     db:           Session              = Depends(get_db),
     current_user: dict                 = Depends(get_current_jobseeker)

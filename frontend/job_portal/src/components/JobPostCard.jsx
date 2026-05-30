@@ -24,9 +24,11 @@ const JobPostCard = ({ job, isExpanded, onToggle, onDelete }) => {
             ) : (
               <span className="jpc-badge jpc-badge--muted"></span>
             )}
-            {job.min_experience != null && (
+            {job.min_experience != null && job.max_experience != null && (
               <span className="jpc-badge jpc-badge--exp">
-                {job.min_experience === 0 ? "Fresher" : `${job.min_experience} yrs`}
+                {job.min_experience === 0 && job.max_experience === 0
+                  ? "Fresher"
+                  : `${job.min_experience}-${job.max_experience} yrs`}
               </span>
             )}
           </div>

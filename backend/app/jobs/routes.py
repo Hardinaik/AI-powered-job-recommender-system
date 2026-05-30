@@ -142,7 +142,7 @@ def delete_job(
 @router.get("/all", response_model=PaginatedJobResponse)
 async def get_all_jobs(
     skip: int          = Query(default=0, ge=0),
-    limit: int         = Query(default=20, ge=1, le=100),
+    limit: int         = Query(default=10, ge=1, le=100),
     db: Session        = Depends(get_db),
     current_user: dict = Depends(get_current_jobseeker)
 ):

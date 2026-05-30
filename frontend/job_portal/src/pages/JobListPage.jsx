@@ -10,7 +10,7 @@ import "./JobListPage.css";
 import ErrorBanner from "../components/ErrorBanner";
 import { getErrorMessage } from "../utils/errorUtils";
 
-const LIMIT = 20;
+const LIMIT = 10;
 
 function JobListPage() {
   const navigate = useNavigate();
