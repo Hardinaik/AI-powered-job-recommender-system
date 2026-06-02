@@ -75,7 +75,7 @@ class Resume(Base):
 
     user_id           = Column(UUID(as_uuid=True), ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
     resume_url        = Column(Text, unique=True, nullable=False)
-    resume_text       = Column(Text, nullable=False)
+    BM25_tokens      =  Column(ARRAY(String), nullable=False) 
     work_embedding    = Column(Vector(768), nullable=True)
     skill_embedding   = Column(Vector(768), nullable=True)
     project_embedding = Column(Vector(768), nullable=True)

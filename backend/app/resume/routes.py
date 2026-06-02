@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from app.exceptions import LLMError, EmbeddingError, PDFExtractionError
 from app.database import get_db
-from app.utils import get_current_jobseeker
+from app.utils import get_current_jobseeker,_tokenize
 from app.models import Resume, User
 from .utils import (
     create_resume_embedding,
@@ -64,7 +64,7 @@ async def upload_resume(
 
     if existing_resume:
         existing_resume.resume_url = file_path.as_posix()
-        existing_resume.resume_text=resume_text
+        existing_resume.BM25_tokens=_tokenize(resume_text)
         existing_resume.skill_embedding = skill_embedding
         existing_resume.work_embedding = work_embedding      
         existing_resume.project_embedding = project_embedding
@@ -72,7 +72,7 @@ async def upload_resume(
         new_resume = Resume(
             user_id=user_id,
             resume_url=file_path.as_posix(),
-            resume_text=resume_text,
+            BM_25tokens=_tokenize(resume_text),
             skill_embedding=skill_embedding,
             work_embedding=work_embedding,
             project_embedding=project_embedding,
