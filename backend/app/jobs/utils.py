@@ -43,18 +43,15 @@ Extract the key details and return the output strictly in valid JSON format.
 
 Instructions:
 
-1. "skills":
-   - Extract all technical and relevant skills mentioned anywhere in the JD.
-   - Normalize variations:
-       * "python programming", "python3" → "python"
-       * "postgres", "postgres db" → "postgresql"
-   - Remove duplicates.
-   - Return as a SPACE-SEPARATED string (no commas).
-   - Example: "python java fastapi postgresql docker kubernetes"
-
+1. Skills (Semantic Summary):
+    - Write a concise natural language summary of technical skills.
+    - Group related skills together (e.g., programming languages, frameworks, databases).
+    - Normalize variations (e.g., "Python3" → "Python", "Postgres" → "PostgreSQL").
+    - Avoid keyword dumping. Write it as a meaningful sentence.
+    - Keep it 2-3 sentences max.
 
 2. "job_summary":
-   - Write a dense 3-5 sentence paragraph that captures BOTH what the role does
+   - Write a dense 5-6 sentence paragraph that captures BOTH what the role does
      AND the domain/technical context the work demands.
    - Combine responsibilities and requirements into one coherent work description.
    - Formula: [What the engineer builds/maintains] + [Tech stack used] +
@@ -74,10 +71,19 @@ Instructions:
 Return strictly in this format (no markdown, no preamble):
 
 {{
-  "job_role": "",
   "skills": "",
   "job_summary": ""
 }}
+
+# Example output :
+
+
+{
+  "skills": "Experience with programming languages such as Java and Python, backend development using Spring Boot, and database technologies including PostgreSQL. Familiarity with distributed systems, event-driven architectures using Kafka, and cloud-native deployments leveraging AWS, Docker, and Kubernetes.",
+  "job_summary": "Engineers in this role design, develop, and maintain scalable backend services that power high-traffic applications. The work involves building RESTful APIs, integrating with distributed data systems, and developing microservices using Java, Spring Boot, and PostgreSQL. Teams collaborate closely with frontend engineers, platform teams, and data engineers to deliver reliable and performant products. The role requires working with event-driven systems, cloud infrastructure, and containerized deployments using Kafka, AWS, Docker, and Kubernetes. Engineers are expected to optimize system reliability, performance, and scalability across production environments. Deep expertise in backend architecture, distributed systems, and modern software engineering practices is central to the day-to-day work."
+}
+
+
 """
 
 
@@ -115,7 +121,7 @@ def extract_json(jd: str) -> JobExtraction:
             status_code=422,
         )
 
-def create_job_embedding(jd: str) -> tuple[list[float], list[float]]:
+def create_job_embedding(jd: str) -> tuple[list[float], list[float],str]:
     """
     Processes a raw job description and returns TWO normalized embeddings.
 
@@ -153,7 +159,9 @@ def create_job_embedding(jd: str) -> tuple[list[float], list[float]]:
     skill_embedding = safe_encode(job_skills)
     job_embedding   = safe_encode(job_summary)
 
-    return skill_embedding, job_embedding
+    job_text= job_skills + " " + job_summary
+
+    return skill_embedding, job_embedding,job_text
 
 
 

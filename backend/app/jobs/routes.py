@@ -55,7 +55,7 @@ def create_job(
         )
 
     try:
-        skill_embedding, job_embedding = create_job_embedding(job.job_description)
+        skill_embedding, job_embedding , BM25_text = create_job_embedding(job.job_description)
     except LLMError as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
     except EmbeddingError as e:
@@ -72,7 +72,7 @@ def create_job(
         recruiter_id       = current_recruiter["user_id"],
         skill_embedding    = skill_embedding,
         job_embedding      = job_embedding,
-        bm25_tokens        = _tokenize(job.job_description),
+        bm25_tokens        = _tokenize(BM25_text),
         posted_at          = datetime.now(timezone.utc)
     )
 
