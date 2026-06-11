@@ -169,7 +169,7 @@ def _resolve_profile_vectors(target_user_id: UUID, db: Session) -> ResumeVectors
         skills_vec      = list(saved_resume.skill_embedding),
         work_vec        = list(saved_resume.work_embedding)    if saved_resume.work_embedding    is not None else None,
         project_vec     = list(saved_resume.project_embedding) if saved_resume.project_embedding is not None else None,
-        bm25_query_text = saved_resume.resume_text or "",
+        bm25_query_text = saved_resume.BM25_tokens or "",
     )
 
 

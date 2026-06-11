@@ -1,6 +1,6 @@
 from jose import JWTError, jwt
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta,timezone
 from app.config import settings
 from fastapi import HTTPException
 
@@ -9,7 +9,7 @@ def _hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 def _create_reset_token(user_id: str) -> str:
-    expire = datetime.utcnow() + timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=settings.RESET_TOKEN_EXPIRE_MINUTES)
     return jwt.encode(
         {"sub": user_id, "exp": expire, "type": "password_reset"},
         settings.SECRET_KEY,

@@ -72,7 +72,7 @@ async def upload_resume(
         new_resume = Resume(
             user_id=user_id,
             resume_url=file_path.as_posix(),
-            BM_25tokens=_tokenize(resume_text),
+            BM25_tokens=_tokenize(resume_text),
             skill_embedding=skill_embedding,
             work_embedding=work_embedding,
             project_embedding=project_embedding,
