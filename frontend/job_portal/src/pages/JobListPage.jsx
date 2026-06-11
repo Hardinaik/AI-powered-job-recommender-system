@@ -403,7 +403,7 @@ function JobListPage() {
             </div>
 
             <div className="filter-group">
-              <label>Resume (optional)</label>
+              <label>Resume</label>
               <div className="upload-box">
                 <input
                   type="file"

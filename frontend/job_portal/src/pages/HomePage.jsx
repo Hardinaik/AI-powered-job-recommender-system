@@ -10,13 +10,13 @@ function HomePage() {
         {/* LEFT */}
         <div className="home-left">
           <h1 className="home-title">
-            The Future of Hiring, <br />
-            <span>Powered by AI.</span>
+            Find Jobs That <br />
+            <span>Match Your Resume.</span>
           </h1>
 
           <p className="home-subtitle">
-            Our platform uses advanced neural matching to connect elite talent
-            with high-growth companies. Choose your path below to get started.
+            Upload your resume and let our AI instantly match you with the most
+            relevant jobs — no endless scrolling, just opportunities built for you.
           </p>
 
           <img
