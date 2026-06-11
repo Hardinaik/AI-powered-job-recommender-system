@@ -18,7 +18,7 @@ from app.resume.utils import (
     validate_file_size,
     create_resume_embedding,
 )
-from app.utils import get_current_jobseeker,_tokenize
+from app.utils import get_current_jobseeker, _tokenize
 from app.exceptions import LLMError, EmbeddingError, PDFExtractionError
 
 
@@ -30,14 +30,13 @@ BM25_B:  float = 0.75
 RRF_K:   int   = 10
 
 
-# Section 1 — BM25 - _tokenize function call
+# Section 1 — BM25
+# query_tokens is already a list[str] — no _tokenize call needed here
 
 def _rank_by_bm25(
-    query_text: str,
-    jobs:       list[Job],
+    query_tokens: list[str],
+    jobs:         list[Job],
 ) -> list[UUID]:
-    query_tokens = _tokenize(query_text)
-
     # Use pre-stored tokens; fall back to tokenizing on the fly if column is null
     tokenized_corpus = [
         job.bm25_tokens if job.bm25_tokens else _tokenize(job.job_description or "")
@@ -53,6 +52,7 @@ def _rank_by_bm25(
         reverse=True,
     )
     return [jid for jid, _ in scored]
+
 
 # Section 2 — Semantic scoring
 
@@ -141,19 +141,19 @@ def _reciprocal_rank_fusion(
 # Section 4 — Resume vectors
 
 class ResumeVectors:
-    """Bundles the three resume vectors and the BM25 query text."""
+    """Bundles the three resume vectors and the BM25 query tokens."""
 
     def __init__(
         self,
-        skills_vec:      list[float],
-        work_vec:        list[float] | None,
-        project_vec:     list[float] | None,
-        bm25_query_text: str = "",
+        skills_vec:        list[float],
+        work_vec:          list[float] | None,
+        project_vec:       list[float] | None,
+        bm25_query_tokens: list[str] = [],
     ):
-        self.skills_vec      = skills_vec
-        self.work_vec        = work_vec
-        self.project_vec     = project_vec
-        self.bm25_query_text = bm25_query_text
+        self.skills_vec        = skills_vec
+        self.work_vec          = work_vec
+        self.project_vec       = project_vec
+        self.bm25_query_tokens = bm25_query_tokens
 
 
 def _resolve_profile_vectors(target_user_id: UUID, db: Session) -> ResumeVectors | None:
@@ -166,10 +166,10 @@ def _resolve_profile_vectors(target_user_id: UUID, db: Session) -> ResumeVectors
         return None
 
     return ResumeVectors(
-        skills_vec      = list(saved_resume.skill_embedding),
-        work_vec        = list(saved_resume.work_embedding)    if saved_resume.work_embedding    is not None else None,
-        project_vec     = list(saved_resume.project_embedding) if saved_resume.project_embedding is not None else None,
-        bm25_query_text = saved_resume.BM25_tokens or "",
+        skills_vec        = list(saved_resume.skill_embedding),
+        work_vec          = list(saved_resume.work_embedding)    if saved_resume.work_embedding    is not None else None,
+        project_vec       = list(saved_resume.project_embedding) if saved_resume.project_embedding is not None else None,
+        bm25_query_tokens = saved_resume.bm25_tokens or [],
     )
 
 
@@ -187,14 +187,15 @@ def _resolve_uploaded_vectors(resume_file: UploadFile, target_user_id: UUID) -> 
             os.remove(temp_path)
 
     return ResumeVectors(
-        skills_vec      = skill_emb,
-        work_vec        = work_emb,
-        project_vec     = project_emb,
-        bm25_query_text = bm25_text,
+        skills_vec        = skill_emb,
+        work_vec          = work_emb,
+        project_vec       = project_emb,
+        bm25_query_tokens = _tokenize(bm25_text),
     )
 
 
 # Section 5 — Filters
+
 class JobFilters:
     def __init__(
         self,
@@ -228,6 +229,7 @@ def _resolve_profile_filters(target_user_id: UUID, db: Session) -> JobFilters:
         job_level    = profile.seniority_level,
     )
 
+
 # Section 6 — Hard filter query
 
 def _apply_hard_filters(db: Session, filters: JobFilters) -> list[Job]:
@@ -257,6 +259,7 @@ def _apply_hard_filters(db: Session, filters: JobFilters) -> list[Job]:
     )
     return jobs
 
+
 # Section 7 — Response builders
 
 def _build_hybrid_response(
@@ -273,8 +276,8 @@ def _build_hybrid_response(
     )
 
     bm25_ranking = (
-        _rank_by_bm25(vectors.bm25_query_text, jobs)
-        if vectors.bm25_query_text.strip()
+        _rank_by_bm25(vectors.bm25_query_tokens, jobs)
+        if vectors.bm25_query_tokens
         else semantic_ranking
     )
 
@@ -304,12 +307,12 @@ def _build_hybrid_response(
 
 
 def _build_bm25_only_response(
-    jobs:            list[Job],
-    bm25_query_text: str,        # ← plain text, not ResumeVectors
-    limit:           int,
+    jobs:              list[Job],
+    bm25_query_tokens: list[str],
+    limit:             int,
 ) -> list[JobItem]:
     """BM25-only ranking when semantic/embedding fails."""
-    bm25_ranking = _rank_by_bm25(bm25_query_text, jobs)
+    bm25_ranking = _rank_by_bm25(bm25_query_tokens, jobs)
     job_map: dict[UUID, Job] = {job.job_id: job for job in jobs}
 
     return [
@@ -379,20 +382,20 @@ async def get_recommended_jobs(
         return RecommendationResponse(ranking_mode="fallback", jobs=[])
 
     # 3. Resolve resume vectors
-    vectors:        ResumeVectors | None = None
-    semantic_failed: bool                = False
-    bm25_query_text: str                 = ""  # captured separately for fallback
+    vectors:           ResumeVectors | None = None
+    semantic_failed:   bool                 = False
+    bm25_query_tokens: list[str]            = []
 
     if use_profile:
         try:
             vectors = _resolve_profile_vectors(target_user_id, db)
-            bm25_query_text = vectors.bm25_query_text if vectors else ""
+            bm25_query_tokens = vectors.bm25_query_tokens if vectors else []
         except Exception:
             semantic_failed = True
     elif resume_file:
         try:
             vectors = _resolve_uploaded_vectors(resume_file, target_user_id)
-            bm25_query_text = vectors.bm25_query_text if vectors else ""
+            bm25_query_tokens = vectors.bm25_query_tokens if vectors else []
         except (LLMError, PDFExtractionError, EmbeddingError):
             semantic_failed = True
 
@@ -403,11 +406,11 @@ async def get_recommended_jobs(
             return RecommendationResponse(ranking_mode="hybrid", jobs=jobs)
         except Exception:
             semantic_failed = True
-            bm25_query_text = vectors.bm25_query_text  # capture before losing reference
+            bm25_query_tokens = vectors.bm25_query_tokens  # capture before losing reference
 
-    # BM25 fallback — semantic failed but we still have resume text
-    if semantic_failed and bm25_query_text.strip():
-        jobs = _build_bm25_only_response(filtered_jobs, bm25_query_text, limit)
+    # BM25 fallback — semantic failed but we still have tokens
+    if semantic_failed and bm25_query_tokens:
+        jobs = _build_bm25_only_response(filtered_jobs, bm25_query_tokens, limit)
         return RecommendationResponse(ranking_mode="bm25_only", jobs=jobs)
 
     # Full fallback — no vectors at all, newest first

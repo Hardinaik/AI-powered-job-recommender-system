@@ -64,7 +64,7 @@ async def upload_resume(
 
     if existing_resume:
         existing_resume.resume_url = file_path.as_posix()
-        existing_resume.BM25_tokens=_tokenize(resume_text)
+        existing_resume.bm25_tokens=_tokenize(resume_text)
         existing_resume.skill_embedding = skill_embedding
         existing_resume.work_embedding = work_embedding      
         existing_resume.project_embedding = project_embedding
@@ -72,7 +72,7 @@ async def upload_resume(
         new_resume = Resume(
             user_id=user_id,
             resume_url=file_path.as_posix(),
-            BM25_tokens=_tokenize(resume_text),
+            bm25_tokens=_tokenize(resume_text),
             skill_embedding=skill_embedding,
             work_embedding=work_embedding,
             project_embedding=project_embedding,
